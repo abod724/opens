@@ -1,19 +1,135 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>myAIS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نبراس - مساعدك الذكي</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 900px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 12px 18px;
+            border-radius: 18px;
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        .user {
+            background: #dbeafe;
+            color: #1e40af;
+            align-self: flex-end;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot {
+            background: #e2e8f0;
+            color: #1e293b;
+            align-self: flex-start;
+            border-bottom-left-radius: 5px;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        #user-input {
+            flex: 1;
+            padding: 14px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 30px;
+            font-size: 16px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        #user-input:focus {
+            border-color: #2563eb;
+        }
+
+        button {
+            padding: 14px 30px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+            transform: scale(1.03);
+        }
+
+        .loading {
+            font-style: italic;
+            color: #64748b;
+        }
+    </style>
 </head>
-<body style="direction: rtl; font-family: Tahoma;">
-    <h2>myAIS - مساعدك الذكي</h2>
-
-    <div id="chat-box" style="width: 60%; height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px;"></div>
-
-    <div style="margin-top: 10px;">
-        <input id="user-input" type="text" placeholder="اكتب رسالتك..." style="width: 50%;">
-        <button onclick="sendMessage()">إرسال</button>
+<body>
+    <div class="container">
+        <div class="header">✨ نبراس - مساعدك الذكي</div>
+        <div class="chat-box" id="chat-box"></div>
+        <div class="input-area">
+            <input type="text" id="user-input" placeholder="اكتب رسالتك هنا...">
+            <button onclick="sendMessage()">إرسال</button>
+        </div>
     </div>
 
-    <script src="{{ url_for('static', filename='chat.js') }}"></script>
+    <script src="chat.js"></script>
 </body>
 </html>
