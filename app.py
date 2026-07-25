@@ -7,15 +7,12 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# تشغيل قاعدة البيانات
 init_db()
 
-# الصفحة الرئيسية
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# نقطة الدردشة
 @app.route("/api/chat", methods=["POST"])
 def chat():
     try:
