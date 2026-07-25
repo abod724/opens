@@ -1,4 +1,9 @@
 flask
+flask_cors
 python-dotenv
 openai
 requests
+beautifulsoup4
+sqlalchemy
+pyjwt
+gunicorn
