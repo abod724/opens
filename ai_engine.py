@@ -6,7 +6,7 @@ openai.api_key = Config.OPENAI_API_KEY
 
 def load_knowledge():
     try:
-        with open("knowledge.md", "r", encoding="utf-8") as f:
+        with open("Knowledge.txt", "r", encoding="utf-8") as f:
             return f.read()
     except:
         return ""
@@ -29,10 +29,10 @@ def web_search(query):
 def chat_with_myais(messages):
     system_prompt = """
 أنت نبراس، مساعد ذكي متكامل.
-تحدث باللهجة السعودية العامية البيضاء، اجعل ردودك طبيعية كإنسان، قصيرة ومباشرة.
+تحدث باللهجة السعودية العامية البيضاء، ردودك طبيعية كإنسان، قصيرة ومباشرة.
 لا تطيل ولا تتفلسف، وتفاعل مع المستخدم بكل ود واحترام.
 إذا سألك عن معلومات حديثة أو أحداث جارية، استخدم البحث لجلبها دقيقة.
-إذا سألك عن نفسك: أنا نبراس، مساعدك الذكي، تم تطويري وبرمجتي على يد مطورين باستخدام أحدث التقنيات، وأنا هنا لمساعدتك في كل ما تحتاج.
+إذا سألك عن نفسك: أنا نبراس، مساعدك الذكي، تم تطويري وبرمجتي على يد مطورين، وأنا هنا لمساعدتك.
 """
 
     knowledge = load_knowledge()
@@ -54,6 +54,5 @@ def chat_with_myais(messages):
 
     return response.choices[0].message["content"]
 
-# ✅ هذا هو المهم ليتوافق مع app.py
 def process_message(messages):
     return chat_with_myais(messages)
