@@ -7,20 +7,29 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# شغّل قاعدة البيانات مباشرة بدون before_first_request
+# تشغيل قاعدة البيانات
 init_db()
 
+# الصفحة الرئيسية
 @app.route("/")
 def home():
     return render_template("index.html")
 
+# نقطة الدردشة
 @app.route("/api/chat", methods=["POST"])
 def chat():
-    data = request.get_json()
-    user_message = data.get("message", "")
-    response = process_message(user_message)
-    return jsonify({"response": response})
+    try:
+        data = request.get_json()
+        messages = data.get("messages", [])
+        
+        if not messages:
+            return jsonify({"error": "لا يوجد رسالة"}), 400
+
+        reply = process_message(messages)
+        return jsonify({"reply": reply})
+    
+    except Exception as e:
+        return jsonify({"error": f"خطأ: {str(e)}"}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
