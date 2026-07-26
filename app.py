@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template_string
-from openai import OpenAI
+import openai
 import os
 import requests
 
@@ -10,7 +10,7 @@ API_KEY = os.environ.get("OPENAI_API_KEY")
 if not API_KEY:
     raise Exception("❌ المفتاح غير موجود")
 
-client = OpenAI(api_key=API_KEY)
+client = openai.OpenAI(api_key=API_KEY)
 
 # قراءة ملف المعرفة
 KNOWLEDGE_FILE = "Knowledge.md"
