@@ -312,3 +312,23 @@
 </script>
 </body>
 </html>
+// تشغيل الرد بصوت عربي سعودي
+function speakText(text) {
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'ar-SA';
+        utterance.rate = 0.95;
+        utterance.pitch = 1;
+        speechSynthesis.speak(utterance);
+    }
+}
+
+// نضيفها لما يرد المساعد
+// ابحث عن هذا السطر في الكود:
+// if (res.ok) addMessage(data.response || 'تم استلام رسالتك.', 'bot');
+// واستبدله بهذا:
+if (res.ok) {
+    const reply = data.response || 'تم استلام رسالتك.';
+    addMessage(reply, 'bot');
+    speakText(reply);
+}
