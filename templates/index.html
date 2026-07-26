@@ -11,7 +11,6 @@
         body { background: #ffffff; margin: 0; padding: 0; }
         .app { width: 100%; height: 100vh; background: #ffffff; display: flex; flex-direction: column; position: relative; }
 
-        /* ✅ الرأس مثبت للأبد فوق ولا يتحرك */
         .header { 
             position: sticky;
             top: 0;
@@ -134,7 +133,6 @@
 
     <div class="dropdown" id="dropdown">
         <button class="item" data-action="new"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
-        <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
         <button class="item" data-action="history"><i class="fas fa-history"></i> المحادثات السابقة</button>
     </div>
 
@@ -197,50 +195,6 @@
             return JSON.parse(localStorage.getItem('chat_history') || '[]');
         }
 
-        function getImages() {
-            return JSON.parse(localStorage.getItem('chat_images') || '[]');
-        }
-        function saveImages(imgs) {
-            localStorage.setItem('chat_images', JSON.stringify(imgs));
-        }
-        function deleteImage(index) {
-            let imgs = getImages();
-            if (index >= 0 && index < imgs.length) {
-                imgs.splice(index, 1);
-                saveImages(imgs);
-                addMessage('تم حذف الصورة.', 'bot', true);
-                showLibrary();
-            }
-        }
-
-        function showLibrary() {
-            const imgs = getImages();
-            if (imgs.length === 0) {
-                addMessage('لا توجد صور محفوظة.', 'bot', true);
-                return;
-            }
-            let html = '<div class="gallery">';
-            imgs.forEach((src, idx) => {
-                html += `<div class="img-wrap">
-                    <img src="${src}" />
-                    <button class="del" data-idx="${idx}">×</button>
-                </div>`;
-            });
-            html += '</div>';
-            const container = document.createElement('div');
-            container.className = 'msg bot';
-            container.innerHTML = html + `<span class="time">${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>`;
-            chatBox.appendChild(container);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            container.querySelectorAll('.del').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const idx = parseInt(this.dataset.idx);
-                    deleteImage(idx);
-                });
-            });
-        }
-
         function showHistory() {
             const hist = getHistory();
             if (hist.length === 0) {
@@ -267,7 +221,6 @@
             dropdown.classList.remove('show');
             switch(action) {
                 case 'new': newChat(); break;
-                case 'library': showLibrary(); break;
                 case 'history': showHistory(); break;
             }
         }
@@ -348,11 +301,8 @@
                 const reader = new FileReader();
                 reader.onload = function(ev) {
                     const imgData = ev.target.result;
-                    let imgs = getImages();
-                    imgs.push(imgData);
-                    saveImages(imgs);
                     addMessage(file.name, 'user', false, imgData);
-                    addMessage('تم حفظ الصورة في مكتبتك.', 'bot', true);
+                    addMessage('تم رفع الصورة.', 'bot', true);
                     fileInput.value = '';
                 };
                 reader.readAsDataURL(file);
