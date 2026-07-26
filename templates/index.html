@@ -160,6 +160,17 @@
         const menuToggle = document.getElementById('menuToggle');
         const dropdown = document.getElementById('dropdown');
 
+        // ✅ دالة قراءة الرد بصوت عربي سعودي
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                const kalam = new SpeechSynthesisUtterance(text);
+                kalam.lang = 'ar-SA';
+                kalam.rate = 0.9;
+                kalam.pitch = 1;
+                speechSynthesis.speak(kalam);
+            }
+        }
+
         function addMessage(text, sender = 'bot', isSystem = false, imageData = null) {
             const el = document.createElement('div');
             el.className = `msg ${sender}`;
@@ -284,8 +295,13 @@
                     body: JSON.stringify({ message: text })
                 });
                 const data = await res.json();
-                if (res.ok) addMessage(data.response || 'تم استلام رسالتك.', 'bot');
-                else addMessage(`خطأ: ${data.error || 'مشكلة في الاتصال'}`, 'error');
+                if (res.ok) {
+                    const رد = data.response || 'تم استلام رسالتك.';
+                    addMessage(رد, 'bot');
+                    speakText(رد);
+                } else {
+                    addMessage(`خطأ: ${data.error || 'مشكلة في الاتصال'}`, 'error');
+                }
             } catch {
                 addMessage('تعذر الاتصال بالسيرفر.', 'error');
             }
@@ -312,23 +328,3 @@
 </script>
 </body>
 </html>
-// تشغيل الرد بصوت عربي سعودي
-function speakText(text) {
-    if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = 'ar-SA';
-        utterance.rate = 0.95;
-        utterance.pitch = 1;
-        speechSynthesis.speak(utterance);
-    }
-}
-
-// نضيفها لما يرد المساعد
-// ابحث عن هذا السطر في الكود:
-// if (res.ok) addMessage(data.response || 'تم استلام رسالتك.', 'bot');
-// واستبدله بهذا:
-if (res.ok) {
-    const reply = data.response || 'تم استلام رسالتك.';
-    addMessage(reply, 'bot');
-    speakText(reply);
-}
