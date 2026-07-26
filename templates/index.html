@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نِبراس - مساعدك الذكي</title>
+<title>نيراس - مساعدك الذكي</title>
 
 <style>
 body {
@@ -13,7 +13,6 @@ body {
     padding: 20px;
     direction: rtl;
 }
-
 .chat-box {
     height: 70vh;
     overflow-y: auto;
@@ -22,20 +21,17 @@ body {
     border-radius: 10px;
     box-shadow: 0 0 5px #ccc;
 }
-
 .input-area {
     display: flex;
     gap: 10px;
     margin-top: 10px;
 }
-
 #userInput {
     flex: 1;
     padding: 10px;
     border-radius: 8px;
     border: 1px solid #ccc;
 }
-
 #sendBtn {
     padding: 10px 20px;
     background: #007bff;
@@ -44,7 +40,6 @@ body {
     border-radius: 8px;
     cursor: pointer;
 }
-
 .user-msg {
     background: #d1e7ff;
     padding: 8px;
@@ -52,7 +47,6 @@ body {
     border-radius: 8px;
     text-align: right;
 }
-
 .bot-msg {
     background: #e8e8e8;
     padding: 8px;
@@ -65,7 +59,7 @@ body {
 
 <body>
 
-<h2>نِبراس - مساعدك الذكي ✨</h2>
+<h2>نيراس - مساعدك الذكي ✨</h2>
 
 <div id="chatBox" class="chat-box"></div>
 
@@ -79,11 +73,9 @@ const input = document.getElementById("userInput");
 const sendBtn = document.getElementById("sendBtn");
 const chatBox = document.getElementById("chatBox");
 
-sendBtn.addEventListener("click", sendMessage);
-
-function sendMessage() {
+sendBtn.onclick = function () {
     const message = input.value.trim();
-    if (message === "") return;
+    if (!message) return;
 
     addMessage("user", message);
     input.value = "";
@@ -91,16 +83,20 @@ function sendMessage() {
     fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({ message: message })
     })
     .then(res => res.json())
     .then(data => {
-        addMessage("bot", data.response);
+        if (data.response) {
+            addMessage("bot", data.response);
+        } else {
+            addMessage("bot", "خطأ في السيرفر.");
+        }
     })
-    .catch(err => {
+    .catch(() => {
         addMessage("bot", "تعذر الاتصال بالسيرفر.");
     });
-}
+};
 
 function addMessage(sender, text) {
     const div = document.createElement("div");
