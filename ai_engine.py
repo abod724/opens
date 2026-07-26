@@ -54,5 +54,6 @@ def chat_with_myais(messages):
 
     return response.choices[0].message["content"]
 
-def process_message(messages):
+def process_message(user_message):
+    messages = [{"role": "user", "content": user_message}]
     return chat_with_myais(messages)
