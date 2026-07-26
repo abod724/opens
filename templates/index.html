@@ -13,120 +13,128 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 800px;
-            background: #ffffff;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            overflow: hidden;
+            background-color: #f7f7f8;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            height: 90vh;
-            max-height: 900px;
         }
 
+        /* شريط العنوان */
         .header {
-            background: linear-gradient(135deg, #2563eb, #1d4ed8);
-            color: white;
-            padding: 20px;
+            background: #ffffff;
+            border-bottom: 1px solid #e5e5e5;
+            padding: 16px 24px;
             text-align: center;
-            font-size: 24px;
-            font-weight: bold;
+            font-size: 20px;
+            font-weight: 600;
+            color: #202123;
         }
 
-        .chat-box {
+        /* منطقة المحادثة */
+        .chat-container {
             flex: 1;
-            padding: 20px;
             overflow-y: auto;
-            background: #f8fafc;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            padding: 24px 16px;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
         }
 
         .message {
+            margin-bottom: 20px;
             max-width: 80%;
-            padding: 12px 18px;
-            border-radius: 18px;
             line-height: 1.6;
-            font-size: 16px;
+            font-size: 15px;
         }
 
-        .user {
-            background: #dbeafe;
-            color: #1e40af;
-            align-self: flex-end;
-            border-bottom-right-radius: 5px;
-        }
-
-        .bot {
-            background: #e2e8f0;
-            color: #1e293b;
-            align-self: flex-start;
-            border-bottom-left-radius: 5px;
-        }
-
-        .input-area {
-            display: flex;
-            gap: 10px;
-            padding: 20px;
-            background: white;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        #user-input {
-            flex: 1;
-            padding: 14px 20px;
-            border: 2px solid #e2e8f0;
-            border-radius: 30px;
-            font-size: 16px;
-            outline: none;
-            transition: 0.3s;
-        }
-
-        #user-input:focus {
-            border-color: #2563eb;
-        }
-
-        button {
-            padding: 14px 30px;
-            background: #2563eb;
+        .user-msg {
+            background: #007bff;
             color: white;
-            border: none;
-            border-radius: 30px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
+            padding: 12px 16px;
+            border-radius: 18px 18px 4px 18px;
+            margin-right: auto;
+            margin-left: 0;
         }
 
-        button:hover {
-            background: #1d4ed8;
-            transform: scale(1.03);
+        .bot-msg {
+            background: #ffffff;
+            color: #333;
+            padding: 12px 16px;
+            border-radius: 18px 18px 18px 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            margin-left: auto;
+            margin-right: 0;
         }
 
         .loading {
+            color: #888;
             font-style: italic;
-            color: #64748b;
+        }
+
+        /* منطقة الإدخال */
+        .input-wrapper {
+            background: #ffffff;
+            border-top: 1px solid #e5e5e5;
+            padding: 16px;
+        }
+
+        .input-box {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        #userInput {
+            flex: 1;
+            padding: 14px 20px;
+            border: 1px solid #d1d5db;
+            border-radius: 24px;
+            font-size: 15px;
+            outline: none;
+            transition: border 0.2s;
+            resize: none;
+            min-height: 48px;
+            max-height: 120px;
+        }
+
+        #userInput:focus {
+            border-color: #007bff;
+        }
+
+        #sendBtn {
+            padding: 12px 24px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            height: 48px;
+        }
+
+        #sendBtn:hover {
+            background: #0056b3;
+        }
+
+        #sendBtn:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">✨ نبراس - مساعدك الذكي</div>
-        <div class="chat-box" id="chat-box"></div>
-        <div class="input-area">
-            <input type="text" id="user-input" placeholder="اكتب رسالتك هنا...">
-            <button onclick="sendMessage()">إرسال</button>
+    <div class="header">✨ نبراس - مساعدك الذكي</div>
+
+    <div class="chat-container" id="chatContainer"></div>
+
+    <div class="input-wrapper">
+        <div class="input-box">
+            <textarea id="userInput" placeholder="اكتب سؤالك هنا... اضغط Enter للإرسال"></textarea>
+            <button id="sendBtn">إرسال</button>
         </div>
     </div>
 
