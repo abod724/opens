@@ -7,7 +7,6 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# تشغيل قاعدة البيانات
 init_db()
 
 @app.route("/")
