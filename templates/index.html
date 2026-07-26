@@ -3,307 +3,285 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-    <title>نيراس - مساعدك الذكي</title>
+    <title>نيراس</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background: #eef2f7; height: 100dvh; display: flex; align-items: center; justify-content: center; margin: 0; padding: 0; overflow: hidden; }
-        .app-container { width: 100%; max-width: 480px; height: 100dvh; background: #ffffff; display: flex; flex-direction: column; overflow: hidden; position: relative; box-shadow: 0 0 20px rgba(0,0,0,0.05); }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background: #ffffff; height: 100dvh; display: flex; justify-content: center; align-items: center; margin: 0; padding: 0; }
+        .app { width: 100%; max-width: 450px; height: 100dvh; background: #ffffff; display: flex; flex-direction: column; position: relative; }
 
-        .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 12px 18px; border-bottom: 1px solid #f0f3f8; flex-shrink: 0; background: #ffffff; z-index: 10; }
-        .chat-header .logo-icon { font-size: 26px; color: #4f7df3; }
-        .chat-header .menu-btn { background: none; border: none; color: #4f5e7a; font-size: 22px; cursor: pointer; padding: 6px 10px; border-radius: 12px; transition: 0.2s; }
-        .chat-header .menu-btn:hover { background: #eef2f7; }
+        /* شريط علوي أبيض بالكامل */
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #eaeef2; flex-shrink: 0; background: #ffffff; }
+        .header .title { font-size: 18px; font-weight: 500; color: #1a2b3c; letter-spacing: 0.3px; }
+        .header .menu-btn { background: none; border: none; font-size: 20px; color: #5a6b7c; cursor: pointer; padding: 4px 8px; }
 
-        .dropdown-menu { position: absolute; top: 70px; left: 18px; right: 18px; background: #ffffff; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.15); padding: 12px 0; display: none; flex-direction: column; z-index: 999; border: 1px solid #eef2f7; max-height: 70vh; overflow-y: auto; }
-        .dropdown-menu.show { display: flex; }
-        .dropdown-menu .menu-item { display: flex; align-items: center; gap: 14px; padding: 14px 20px; font-size: 16px; color: #1a2b4a; border: none; background: none; width: 100%; text-align: right; cursor: pointer; transition: 0.15s; border-bottom: 1px solid #f5f8fc; }
-        .dropdown-menu .menu-item:last-child { border-bottom: none; }
-        .dropdown-menu .menu-item i { width: 24px; font-size: 20px; color: #4f7df3; }
-        .dropdown-menu .menu-item:hover { background: #f5f8ff; }
+        /* القائمة المنسدلة - ٣ خيارات */
+        .dropdown { position: absolute; top: 64px; left: 14px; right: 14px; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); display: none; flex-direction: column; z-index: 100; border: 1px solid #eaedf2; }
+        .dropdown.show { display: flex; }
+        .dropdown .item { display: flex; align-items: center; gap: 12px; padding: 14px 18px; font-size: 15px; color: #1a2b3c; background: none; border: none; width: 100%; text-align: right; cursor: pointer; border-bottom: 1px solid #f0f2f5; }
+        .dropdown .item:last-child { border-bottom: none; }
+        .dropdown .item i { width: 22px; font-size: 18px; color: #4a6a8a; }
+        .dropdown .item:hover { background: #f5f7fa; }
 
-        #chat-box { flex: 1; overflow-y: auto; padding: 14px 18px 10px 18px; display: flex; flex-direction: column; gap: 10px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
-        .message { max-width: 85%; padding: 10px 16px; border-radius: 20px; line-height: 1.6; font-size: 15px; animation: fadeIn 0.25s ease; word-wrap: break-word; }
-        .message.user { align-self: flex-end; background: #4f7df3; color: white; border-bottom-left-radius: 6px; }
-        .message.bot { align-self: flex-start; background: #f1f4f9; color: #1a2b4a; border-bottom-right-radius: 6px; }
-        .message .time { font-size: 9px; opacity: 0.4; margin-top: 4px; display: block; }
-        .message.error-msg { background: #ffe5e5; color: #b33; align-self: center; max-width: 90%; }
-        .message.system { background: #e8f0fe; color: #1a3a6b; align-self: center; max-width: 95%; font-size: 14px; border-radius: 16px; text-align: center; }
+        /* صندوق المحادثات - أبيض خلفية */
+        #chat { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; background: #ffffff; }
+        .msg { max-width: 80%; padding: 10px 16px; border-radius: 20px; font-size: 15px; line-height: 1.6; word-wrap: break-word; }
+        .msg.user { align-self: flex-end; background: #eef2f7; color: #1a2b3c; border-bottom-left-radius: 6px; }
+        .msg.bot { align-self: flex-start; background: #f5f7fa; color: #1a2b3c; border-bottom-right-radius: 6px; }
+        .msg .time { font-size: 9px; opacity: 0.35; display: block; margin-top: 4px; }
+        .msg.error { background: #fde8e8; color: #a33; align-self: center; max-width: 90%; }
 
-        .gallery { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-        .gallery img { width: 70px; height: 70px; object-fit: cover; border-radius: 12px; border: 1px solid #ddd; }
-        .gallery .img-wrapper { position: relative; display: inline-block; }
-        .gallery .img-wrapper .delete-btn { position: absolute; top: -6px; left: -6px; background: #d34a4a; color: white; border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .gallery .img-wrapper .delete-btn:hover { background: #b33; }
+        /* عرض الصور في المكتبة */
+        .gallery { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
+        .gallery .img-wrap { position: relative; display: inline-block; }
+        .gallery .img-wrap img { width: 68px; height: 68px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; }
+        .gallery .img-wrap .del { position: absolute; top: -6px; left: -6px; background: #c33; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        .input-area { display: flex; align-items: center; gap: 8px; background: #f5f8fc; border-radius: 50px; padding: 4px 4px 4px 16px; margin: 8px 16px 16px 16px; border: 1px solid #e6ecf5; transition: 0.3s; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-        .input-area:focus-within { border-color: #4f7df3; box-shadow: 0 2px 14px rgba(79,125,243,0.10); }
-        .input-left { display: flex; align-items: center; gap: 2px; }
-        .input-left button { background: none; border: none; color: #8a9bb5; font-size: 20px; cursor: pointer; padding: 6px; border-radius: 50%; transition: 0.2s; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; }
-        .input-left button:hover { background: #e6edf6; color: #1a2b4a; }
-        .input-left button.mic-btn { color: #4f7df3; }
-        .input-left button.mic-btn:hover { background: #dfe8fd; }
-        .input-area input { flex: 1; border: none; background: transparent; padding: 12px 4px; font-size: 16px; outline: none; color: #1a2b4a; min-width: 0; direction: rtl; }
-        .input-area input::placeholder { color: #b0c0d4; font-size: 15px; }
-        .input-area .send-btn { background: #4f7df3; border: none; color: white; width: 46px; height: 46px; border-radius: 50%; font-size: 20px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px rgba(79,125,243,0.30); }
-        .input-area .send-btn:hover { background: #3b66d9; transform: scale(1.02); }
-        .input-area .send-btn:active { transform: scale(0.92); }
+        /* مربع الكتابة - أبيض خلفية */
+        .input-area { display: flex; align-items: center; gap: 8px; padding: 6px 14px; margin: 8px 14px 16px 14px; background: #f5f7fa; border-radius: 40px; border: 1px solid #dce1e8; flex-shrink: 0; }
+        .input-area input { flex: 1; border: none; background: transparent; padding: 12px 4px; font-size: 15px; outline: none; color: #1a2b3c; direction: rtl; }
+        .input-area input::placeholder { color: #9aabbc; }
+        .input-area .btn-icon { background: none; border: none; color: #6a7b8c; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+        .input-area .btn-icon:hover { background: #e8ecf0; }
+        .input-area .send { background: #4a6a8a; color: white; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(74,106,138,0.2); }
+        .input-area .send:hover { background: #3a5a7a; }
 
         @media (max-width: 420px) {
-            .chat-header { padding: 12px 14px 10px 14px; }
-            .chat-header .logo-icon { font-size: 22px; }
-            .dropdown-menu { top: 60px; left: 12px; right: 12px; }
-            .dropdown-menu .menu-item { padding: 12px 16px; font-size: 15px; }
-            #chat-box { padding: 10px 12px 8px 12px; }
-            .message { font-size: 14px; padding: 8px 12px; }
-            .input-area { margin: 6px 12px 12px 12px; }
-            .input-area input { font-size: 15px; padding: 10px 4px; }
-            .input-area .send-btn { width: 40px; height: 40px; font-size: 18px; }
-            .input-left button { width: 34px; height: 34px; font-size: 18px; }
+            .header { padding: 12px 14px; }
+            .header .title { font-size: 16px; }
+            .dropdown { top: 58px; left: 10px; right: 10px; }
+            .dropdown .item { padding: 12px 14px; font-size: 14px; }
+            #chat { padding: 12px 14px; }
+            .msg { font-size: 14px; padding: 8px 12px; }
+            .input-area { margin: 6px 10px 12px 10px; padding: 4px 10px; }
+            .input-area input { font-size: 14px; padding: 10px 2px; }
+            .input-area .send { width: 40px; height: 40px; font-size: 16px; }
+            .input-area .btn-icon { width: 34px; height: 34px; font-size: 18px; }
         }
     </style>
 </head>
 <body>
-<div class="app-container">
 
-    <div class="chat-header">
-        <div class="logo-icon"><i class="fas fa-brain"></i></div>
+<div class="app">
+
+    <!-- شريط علوي: اسم "نيراس" بدل الدماغ -->
+    <div class="header">
+        <span class="title">نيراس</span>
         <button class="menu-btn" id="menuToggle"><i class="fas fa-ellipsis-v"></i></button>
     </div>
 
-    <!-- القائمة المنسدلة (بدون رئيسية، مع محادثة جديدة) -->
-    <div class="dropdown-menu" id="dropdownMenu">
-        <button class="menu-item" data-action="newchat"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
-        <button class="menu-item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة (صوري)</button>
-        <button class="menu-item" data-action="history"><i class="fas fa-history"></i> المحادثات السابقة</button>
+    <!-- القائمة: ٣ خيارات -->
+    <div class="dropdown" id="dropdown">
+        <button class="item" data-action="new"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
+        <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
+        <button class="item" data-action="history"><i class="fas fa-history"></i> المحادثات السابقة</button>
     </div>
 
-    <div id="chat-box"></div>
+    <!-- صندوق المحادثات -->
+    <div id="chat"></div>
 
+    <!-- مربع الكتابة -->
     <div class="input-area">
-        <div class="input-left">
-            <button class="mic-btn" id="micBtn"><i class="fas fa-microphone"></i></button>
-            <button id="fileBtn"><i class="fas fa-image"></i></button>
-            <input type="file" id="fileInput" accept="image/*" style="display: none;" />
-        </div>
-        <input type="text" id="user-input" placeholder="اكتب رسالتك..." autofocus />
-        <button class="send-btn" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
+        <button class="btn-icon" id="micBtn"><i class="fas fa-microphone"></i></button>
+        <button class="btn-icon" id="fileBtn"><i class="fas fa-image"></i></button>
+        <input type="file" id="fileInput" accept="image/*" style="display: none;" />
+        <input type="text" id="userInput" placeholder="اكتب رسالة..." autofocus />
+        <button class="send" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
     </div>
 </div>
 
 <script>
     (function() {
-        const chatBox = document.getElementById('chat-box');
-        const userInput = document.getElementById('user-input');
+        'use strict';
+
+        const chatBox = document.getElementById('chat');
+        const userInput = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
         const micBtn = document.getElementById('micBtn');
         const fileBtn = document.getElementById('fileBtn');
         const fileInput = document.getElementById('fileInput');
         const menuToggle = document.getElementById('menuToggle');
-        const dropdown = document.getElementById('dropdownMenu');
-        let isMenuOpen = false;
+        const dropdown = document.getElementById('dropdown');
 
-        // === إضافة رسالة ===
         function addMessage(text, sender = 'bot', isSystem = false) {
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${sender}${isSystem ? ' system' : ''}`;
+            const el = document.createElement('div');
+            el.className = `msg ${sender}`;
+            if (sender === 'error') el.classList.add('error');
             const now = new Date();
-            const timeStr = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-            msgDiv.innerHTML = `${text} <span class="time">${timeStr}</span>`;
-            chatBox.appendChild(msgDiv);
+            const time = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            el.innerHTML = `${text} <span class="time">${time}</span>`;
+            chatBox.appendChild(el);
             chatBox.scrollTop = chatBox.scrollHeight;
-            saveChatToHistory(sender, text);
+            if (!isSystem && sender !== 'error') {
+                saveHistory(sender, text);
+            }
         }
 
-        // === حفظ واسترجاع المحادثات ===
-        function saveChatToHistory(sender, text) {
-            let history = JSON.parse(localStorage.getItem('niras_chat_history') || '[]');
-            history.push({ sender, text, time: new Date().toISOString() });
-            if (history.length > 50) history = history.slice(-50);
-            localStorage.setItem('niras_chat_history', JSON.stringify(history));
+        function saveHistory(sender, text) {
+            let hist = JSON.parse(localStorage.getItem('niras_history') || '[]');
+            hist.push({ sender, text, time: new Date().toISOString() });
+            if (hist.length > 100) hist = hist.slice(-100);
+            localStorage.setItem('niras_history', JSON.stringify(hist));
         }
-        function getChatHistory() {
-            return JSON.parse(localStorage.getItem('niras_chat_history') || '[]');
+        function getHistory() {
+            return JSON.parse(localStorage.getItem('niras_history') || '[]');
         }
 
-        // === حفظ واسترجاع الصور ===
         function getImages() {
             return JSON.parse(localStorage.getItem('niras_images') || '[]');
         }
-        function saveImages(images) {
-            localStorage.setItem('niras_images', JSON.stringify(images));
+        function saveImages(imgs) {
+            localStorage.setItem('niras_images', JSON.stringify(imgs));
         }
         function deleteImage(index) {
-            let images = getImages();
-            if (index >= 0 && index < images.length) {
-                images.splice(index, 1);
-                saveImages(images);
-                addMessage('🗑️ تم حذف الصورة.', 'bot', true);
+            let imgs = getImages();
+            if (index >= 0 && index < imgs.length) {
+                imgs.splice(index, 1);
+                saveImages(imgs);
+                addMessage('تم حذف الصورة.', 'bot', true);
                 showLibrary();
             }
         }
 
-        // === عرض المكتبة ===
         function showLibrary() {
-            const images = getImages();
-            if (!images || images.length === 0) {
-                addMessage('📭 لا توجد صور في مكتبتك. ارفع صورة باستخدام زر 📎.', 'bot', true);
+            const imgs = getImages();
+            if (imgs.length === 0) {
+                addMessage('لا توجد صور في مكتبتك.', 'bot', true);
                 return;
             }
             let html = '<div class="gallery">';
-            images.forEach((imgData, index) => {
-                html += `<div class="img-wrapper">
-                    <img src="${imgData}" />
-                    <button class="delete-btn" data-index="${index}">✕</button>
+            imgs.forEach((src, idx) => {
+                html += `<div class="img-wrap">
+                    <img src="${src}" />
+                    <button class="del" data-idx="${idx}">×</button>
                 </div>`;
             });
             html += '</div>';
             const container = document.createElement('div');
-            container.className = 'message bot system';
+            container.className = 'msg bot';
             container.innerHTML = html + `<span class="time">${new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</span>`;
             chatBox.appendChild(container);
             chatBox.scrollTop = chatBox.scrollHeight;
-            container.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+            container.querySelectorAll('.del').forEach(btn => {
+                btn.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    const idx = parseInt(btn.dataset.index);
+                    const idx = parseInt(this.dataset.idx);
                     deleteImage(idx);
                 });
             });
         }
 
-        // === عرض المحادثات السابقة ===
         function showHistory() {
-            const history = getChatHistory();
-            if (history.length === 0) {
-                addMessage('📭 لا توجد محادثات سابقة.', 'bot', true);
+            const hist = getHistory();
+            if (hist.length === 0) {
+                addMessage('لا توجد محادثات سابقة.', 'bot', true);
                 return;
             }
-            let msg = '📜 **آخر المحادثات**\n';
-            history.slice(-8).forEach((entry, idx) => {
-                const time = new Date(entry.time).toLocaleString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-                msg += `${idx+1}. ${entry.sender === 'user' ? '👤' : '🤖'} ${entry.text.substring(0, 35)}... (${time})\n`;
+            let msg = '';
+            hist.slice(-12).forEach((entry, i) => {
+                const t = new Date(entry.time).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+                const who = entry.sender === 'user' ? '👤' : '🤖';
+                const txt = entry.text.length > 40 ? entry.text.substring(0, 40) + '...' : entry.text;
+                msg += `${i+1}. ${who} ${txt} (${t})\n`;
             });
             addMessage(msg, 'bot', true);
-            history.slice(-5).forEach((entry) => {
+            hist.slice(-5).forEach(entry => {
                 const btn = document.createElement('button');
-                btn.textContent = `↻ ${entry.text.substring(0, 25)}`;
-                btn.style.cssText = 'background: #eef2f7; border: none; border-radius: 20px; padding: 6px 14px; margin: 4px; cursor: pointer; font-size: 13px;';
+                btn.textContent = `↻ ${entry.text.length > 22 ? entry.text.substring(0, 22) + '…' : entry.text}`;
+                btn.style.cssText = 'background:#f0f2f5;border:none;border-radius:30px;padding:4px 12px;margin:4px;cursor:pointer;font-size:13px;color:#1a2b3c;';
                 btn.onclick = function() { userInput.value = entry.text; userInput.focus(); };
                 chatBox.appendChild(btn);
             });
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // === محادثة جديدة (مسح الشات + رسالة ترحيب) ===
-        function startNewChat() {
-            chatBox.innerHTML = ''; // مسح المحتوى
-            addMessage('🔄 بدأت محادثة جديدة. اسألني أي شيء.', 'bot', true);
+        function newChat() {
+            chatBox.innerHTML = '';
         }
 
-        // === معالجة خيارات القائمة ===
         function handleAction(action) {
+            dropdown.classList.remove('show');
             switch(action) {
-                case 'newchat': startNewChat(); break;
+                case 'new': newChat(); break;
                 case 'library': showLibrary(); break;
                 case 'history': showHistory(); break;
                 default: break;
             }
         }
 
-        // === ربط أزرار القائمة ===
-        document.querySelectorAll('.dropdown-menu .menu-item').forEach(item => {
+        document.querySelectorAll('.dropdown .item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
-                dropdown.classList.remove('show');
-                isMenuOpen = false;
                 handleAction(item.dataset.action);
             });
         });
 
         menuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
-            isMenuOpen = !isMenuOpen;
-            dropdown.classList.toggle('show', isMenuOpen);
+            dropdown.classList.toggle('show');
         });
-        document.addEventListener('click', (e) => {
-            if (!menuToggle.contains(e.target) && !dropdown.contains(e.target)) {
-                dropdown.classList.remove('show');
-                isMenuOpen = false;
-            }
+        document.addEventListener('click', () => {
+            dropdown.classList.remove('show');
         });
 
-        // === إرسال الرسالة ===
         async function sendMessage() {
-            const message = userInput.value.trim();
-            if (!message) return;
-            addMessage(message, 'user');
+            const text = userInput.value.trim();
+            if (!text) return;
+            addMessage(text, 'user');
             userInput.value = '';
             userInput.focus();
             try {
                 const res = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message })
+                    body: JSON.stringify({ message: text })
                 });
                 const data = await res.json();
                 if (res.ok) addMessage(data.response, 'bot');
-                else addMessage(`⚠️ ${data.error || 'خطأ'}`, 'bot error-msg');
+                else addMessage(`خطأ: ${data.error || 'مشكلة في السيرفر'}`, 'error');
             } catch (e) {
-                addMessage('⚠️ تعذر الاتصال بالسيرفر.', 'bot error-msg');
+                addMessage('تعذر الاتصال بالسيرفر.', 'error');
             }
         }
 
         sendBtn.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-        // === المايك ===
         micBtn.addEventListener('click', () => {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                addMessage('🎙️ جاري الاستماع...', 'bot', true);
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                const recognition = new SpeechRecognition();
-                recognition.lang = 'ar-SA';
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    userInput.value = transcript;
-                    addMessage(`🎤 سمعت: "${transcript}"`, 'bot', true);
-                    setTimeout(sendMessage, 300);
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const rec = new SR();
+                rec.lang = 'ar-SA';
+                rec.onresult = (e) => {
+                    const txt = e.results[0][0].transcript;
+                    userInput.value = txt;
+                    setTimeout(sendMessage, 200);
                 };
-                recognition.onerror = () => addMessage('⚠️ لم يُسمع صوت، حاول مرة أخرى.', 'bot', true);
-                recognition.start();
+                rec.onerror = () => addMessage('لم يتعرف على الصوت.', 'bot', true);
+                rec.start();
             } else {
-                addMessage('⚠️ متصفحك لا يدعم الصوت.', 'bot', true);
+                addMessage('المتصفح لا يدعم الصوت.', 'bot', true);
             }
         });
 
-        // === رفع الصور ===
         fileBtn.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => {
-            if (fileInput.files && fileInput.files.length > 0) {
-                const file = fileInput.files[0];
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files.length > 0) {
+                const file = this.files[0];
                 const reader = new FileReader();
-                reader.onload = (ev) => {
-                    let images = getImages();
-                    images.push(ev.target.result);
-                    saveImages(images);
-                    addMessage(`📎 تم رفع: ${file.name}`, 'user');
-                    addMessage('✅ حفظت في مكتبتك.', 'bot', true);
+                reader.onload = function(ev) {
+                    let imgs = getImages();
+                    imgs.push(ev.target.result);
+                    saveImages(imgs);
+                    addMessage(`تم رفع ${file.name}`, 'user');
+                    addMessage('حُفظ في المكتبة.', 'bot', true);
                     fileInput.value = '';
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // === ترحيب أولي ===
-        if (!localStorage.getItem('niras_welcomed')) {
-            setTimeout(() => {
-                addMessage('👋 مرحباً! أنا نيراس. اسألني أي شيء، أو استخدم القائمة ☰ للمكتبة والمحادثات السابقة.', 'bot', true);
-                localStorage.setItem('niras_welcomed', 'true');
-            }, 300);
-        } else {
-            setTimeout(() => addMessage('👋 أهلاً بك مجدداً!', 'bot', true), 300);
-        }
+        // لا توجد رسائل ترحيبية.
     })();
 </script>
 </body>
