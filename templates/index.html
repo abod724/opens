@@ -7,8 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { background: #ffffff; height: 100dvh; display: flex; justify-content: center; align-items: center; margin: 0; padding: 0; }
-        .app { width: 100%; max-width: 450px; height: 100dvh; background: #ffffff; display: flex; flex-direction: column; position: relative; }
+        html, body { height: 100%; overflow: hidden; }
+        body { background: #ffffff; display: flex; justify-content: center; align-items: center; margin: 0; padding: 0; }
+        .app { width: 100%; max-width: 450px; height: 100vh; background: #ffffff; display: flex; flex-direction: column; position: relative; }
 
         .header { display: flex; justify-content: flex-end; align-items: center; padding: 14px 18px; border-bottom: 1px solid #eaeef2; flex-shrink: 0; background: #ffffff; }
         .header .menu-btn { background: none; border: none; font-size: 22px; color: #5a6b7c; cursor: pointer; padding: 4px 8px; }
@@ -27,7 +28,6 @@
         .msg .time { font-size: 9px; opacity: 0.35; display: block; margin-top: 4px; }
         .msg.error { background: #fde8e8; color: #a33; align-self: center; max-width: 90%; }
 
-        /* عرض الصورة داخل الرسالة */
         .msg .image-upload { max-width: 100%; max-height: 200px; border-radius: 12px; margin: 4px 0; border: 1px solid #ddd; display: block; }
         .msg .file-label { font-size: 12px; color: #6a7b8c; margin-top: 2px; display: block; }
 
@@ -36,7 +36,7 @@
         .gallery .img-wrap img { width: 68px; height: 68px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; }
         .gallery .img-wrap .del { position: absolute; top: -6px; left: -6px; background: #c33; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        .input-area { display: flex; align-items: center; gap: 6px; padding: 6px 12px; margin: 8px 14px 16px 14px; background: #f5f7fa; border-radius: 40px; border: 1px solid #dce1e8; flex-shrink: 0; }
+        .input-area { display: flex; align-items: center; gap: 6px; padding: 6px 12px; margin: 8px 14px 16px 14px; background: #f5f7fa; border-radius: 40px; border: 1px solid #dce1e8; flex-shrink: 0; position: relative; z-index: 10; }
         .input-area input { flex: 1; border: none; background: transparent; padding: 12px 4px; font-size: 15px; outline: none; color: #1a2b3c; direction: rtl; }
         .input-area input::placeholder { color: #9aabbc; }
         .input-area .btn-icon { background: none; border: none; color: #6a7b8c; font-size: 20px; cursor: pointer; padding: 4px; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
@@ -77,11 +77,11 @@
     <div id="chat"></div>
 
     <div class="input-area">
-        <button class="btn-icon mic-btn" id="micBtn" title="تسجيل صوت (يكتب النص)"><i class="fas fa-microphone"></i></button>
+        <button class="btn-icon mic-btn" id="micBtn" title="تسجيل صوت"><i class="fas fa-microphone"></i></button>
         <button class="btn-icon" id="fileBtn" title="رفع صورة"><i class="fas fa-image"></i></button>
         <input type="file" id="fileInput" accept="image/*" style="display: none;" />
-        <input type="text" id="userInput" placeholder="اكتب رسالة..." autofocus />
-        <button class="send" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
+        <input type="text" id="userInput" placeholder="اكتب رسالتك هنا..." autofocus />
+        <button class="send" id="sendBtn"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
 
@@ -98,7 +98,6 @@
         const menuToggle = document.getElementById('menuToggle');
         const dropdown = document.getElementById('dropdown');
 
-        // === دالة إضافة رسالة (مع دعم الصور) ===
         function addMessage(text, sender = 'bot', isSystem = false, imageData = null) {
             const el = document.createElement('div');
             el.className = `msg ${sender}`;
@@ -106,7 +105,6 @@
             
             let content = '';
             if (imageData) {
-                // عرض الصورة واسم الملف
                 content = `<img src="${imageData}" class="image-upload" /><span class="file-label">${text || 'صورة'}</span>`;
             } else {
                 content = text;
@@ -118,7 +116,6 @@
             chatBox.appendChild(el);
             chatBox.scrollTop = chatBox.scrollHeight;
             
-            // حفظ التاريخ (نحفظ وصف الصورة بدلاً من البيانات الضخمة)
             if (!isSystem && sender !== 'error') {
                 let historyText = text;
                 if (imageData) historyText = '📷 رفع صورة: ' + (text || 'صورة');
@@ -126,23 +123,21 @@
             }
         }
 
-        // === التاريخ ===
         function saveHistory(sender, text) {
-            let hist = JSON.parse(localStorage.getItem('niras_history') || '[]');
+            let hist = JSON.parse(localStorage.getItem('chat_history') || '[]');
             hist.push({ sender, text, time: new Date().toISOString() });
             if (hist.length > 100) hist = hist.slice(-100);
-            localStorage.setItem('niras_history', JSON.stringify(hist));
+            localStorage.setItem('chat_history', JSON.stringify(hist));
         }
         function getHistory() {
-            return JSON.parse(localStorage.getItem('niras_history') || '[]');
+            return JSON.parse(localStorage.getItem('chat_history') || '[]');
         }
 
-        // === الصور ===
         function getImages() {
-            return JSON.parse(localStorage.getItem('niras_images') || '[]');
+            return JSON.parse(localStorage.getItem('chat_images') || '[]');
         }
         function saveImages(imgs) {
-            localStorage.setItem('niras_images', JSON.stringify(imgs));
+            localStorage.setItem('chat_images', JSON.stringify(imgs));
         }
         function deleteImage(index) {
             let imgs = getImages();
@@ -154,11 +149,10 @@
             }
         }
 
-        // === عرض المكتبة ===
         function showLibrary() {
             const imgs = getImages();
             if (imgs.length === 0) {
-                addMessage('لا توجد صور.', 'bot', true);
+                addMessage('لا توجد صور محفوظة.', 'bot', true);
                 return;
             }
             let html = '<div class="gallery">';
@@ -183,47 +177,37 @@
             });
         }
 
-        // === عرض المحادثات السابقة ===
         function showHistory() {
             const hist = getHistory();
             if (hist.length === 0) {
-                addMessage('لا توجد محادثات.', 'bot', true);
+                addMessage('لا توجد محادثات سابقة.', 'bot', true);
                 return;
             }
-            let msg = '';
-            hist.slice(-12).forEach((entry) => {
-                const t = new Date(entry.time).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-                const txt = entry.text.length > 40 ? entry.text.substring(0, 40) + '...' : entry.text;
-                msg += `- ${txt} (${t})\n`;
-            });
-            addMessage(msg, 'bot', true);
-            hist.slice(-5).forEach(entry => {
+            addMessage('أحدث المحادثات:', 'bot', true);
+            hist.slice(-6).forEach(entry => {
                 const btn = document.createElement('button');
-                btn.textContent = entry.text.length > 22 ? entry.text.substring(0, 22) + '…' : entry.text;
-                btn.style.cssText = 'background:#f0f2f5;border:none;border-radius:30px;padding:4px 12px;margin:4px;cursor:pointer;font-size:13px;color:#1a2b3c;';
-                btn.onclick = function() { userInput.value = entry.text; userInput.focus(); };
+                btn.textContent = entry.text.length > 25 ? entry.text.substring(0, 25) + '…' : entry.text;
+                btn.style.cssText = 'background:#f0f2f5;border:none;border-radius:30px;padding:6px 14px;margin:4px;cursor:pointer;font-size:13px;color:#1a2b3c;display:block;text-align:right;';
+                btn.onclick = function() { userInput.value = entry.text; userInput.focus(); dropdown.classList.remove('show'); };
                 chatBox.appendChild(btn);
             });
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // === محادثة جديدة ===
         function newChat() {
             chatBox.innerHTML = '';
+            dropdown.classList.remove('show');
         }
 
-        // === معالجة خيارات القائمة ===
         function handleAction(action) {
             dropdown.classList.remove('show');
             switch(action) {
                 case 'new': newChat(); break;
                 case 'library': showLibrary(); break;
                 case 'history': showHistory(); break;
-                default: break;
             }
         }
 
-        // === ربط القائمة ===
         document.querySelectorAll('.dropdown .item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -239,7 +223,6 @@
             dropdown.classList.remove('show');
         });
 
-        // === تسجيل الصوت ===
         let recognition = null;
         micBtn.addEventListener('click', function() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -264,29 +247,19 @@
                 const transcript = event.results[0][0].transcript;
                 userInput.value = transcript;
                 micBtn.classList.remove('listening');
-                setTimeout(() => {
-                    sendMessage();
-                }, 300);
+                setTimeout(() => sendMessage(), 300);
             };
-            recognition.onerror = (event) => {
-                micBtn.classList.remove('listening');
-                if (event.error !== 'aborted') {
-                    addMessage('لم يتعرف على الصوت، حاول مرة أخرى.', 'bot', true);
-                }
-            };
-            recognition.onend = () => {
-                micBtn.classList.remove('listening');
-            };
-            recognition.start();
+            recognition.onerror = () => micBtn.classList.remove('listening');
+            recognition.onend = () => micBtn.classList.remove('listening');
         });
 
-        // === إرسال الرسالة ===
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
             addMessage(text, 'user');
             userInput.value = '';
             userInput.focus();
+            
             try {
                 const res = await fetch('/chat', {
                     method: 'POST',
@@ -294,12 +267,9 @@
                     body: JSON.stringify({ message: text })
                 });
                 const data = await res.json();
-                if (res.ok) {
-                    addMessage(data.response, 'bot');
-                } else {
-                    addMessage(`خطأ: ${data.error || 'مشكلة في السيرفر'}`, 'error');
-                }
-            } catch (e) {
+                if (res.ok) addMessage(data.response || 'تم استلام رسالتك.', 'bot');
+                else addMessage(`خطأ: ${data.error || 'مشكلة في الاتصال'}`, 'error');
+            } catch {
                 addMessage('تعذر الاتصال بالسيرفر.', 'error');
             }
         }
@@ -307,7 +277,6 @@
         sendBtn.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-        // === رفع الصور (مع عرضها داخل الشات) ===
         fileBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
@@ -315,13 +284,11 @@
                 const reader = new FileReader();
                 reader.onload = function(ev) {
                     const imgData = ev.target.result;
-                    // حفظ الصورة في المكتبة
                     let imgs = getImages();
                     imgs.push(imgData);
                     saveImages(imgs);
-                    // عرض الصورة في الشات
                     addMessage(file.name, 'user', false, imgData);
-                    addMessage('حُفظت الصورة في مكتبتك.', 'bot', true);
+                    addMessage('تم حفظ الصورة في مكتبتك.', 'bot', true);
                     fileInput.value = '';
                 };
                 reader.readAsDataURL(file);
