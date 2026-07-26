@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-    <title>المساعد الصوتي</title>
+    <title>المساعد</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
@@ -41,8 +41,6 @@
         .input-area .mic-btn.listening { color: #c33; background: #fde8e8; }
         .input-area .send { background: #4a6a8a; color: white; border: none; width: 44px; height: 44px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(74,106,138,0.2); }
         .input-area .send:hover { background: #3a5a7a; }
-        .input-area .voice-toggle { background: none; border: none; color: #5a6b7c; font-size: 16px; cursor: pointer; padding: 4px 8px; border-radius: 30px; }
-        .input-area .voice-toggle.active { background: #e8ecf0; color: #1a2b3c; }
 
         @media (max-width: 420px) {
             .header { padding: 12px 14px; }
@@ -76,13 +74,12 @@
     <!-- الشات -->
     <div id="chat"></div>
 
-    <!-- مربع الكتابة مع أزرار الصوت -->
+    <!-- مربع الكتابة (بدون زر مكبر الصوت) -->
     <div class="input-area">
         <button class="btn-icon mic-btn" id="micBtn" title="تسجيل صوت (يكتب النص)"><i class="fas fa-microphone"></i></button>
         <button class="btn-icon" id="fileBtn" title="رفع صورة"><i class="fas fa-image"></i></button>
         <input type="file" id="fileInput" accept="image/*" style="display: none;" />
         <input type="text" id="userInput" placeholder="اكتب رسالة..." autofocus />
-        <button class="voice-toggle" id="voiceToggle" title="تشغيل/إيقاف الرد الصوتي">🔊</button>
         <button class="send" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
     </div>
 </div>
@@ -91,7 +88,6 @@
     (function() {
         'use strict';
 
-        // عناصر DOM
         const chatBox = document.getElementById('chat');
         const userInput = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
@@ -100,12 +96,7 @@
         const fileInput = document.getElementById('fileInput');
         const menuToggle = document.getElementById('menuToggle');
         const dropdown = document.getElementById('dropdown');
-        const voiceToggle = document.getElementById('voiceToggle');
 
-        // حالة الصوت
-        let voiceEnabled = false; // هل يرد البوت بصوت؟
-
-        // === دالة إضافة رسالة ===
         function addMessage(text, sender = 'bot', isSystem = false) {
             const el = document.createElement('div');
             el.className = `msg ${sender}`;
@@ -118,34 +109,8 @@
             if (!isSystem && sender !== 'error') {
                 saveHistory(sender, text);
             }
-            // إذا كان الرد من البوت والصوت مفعّل، نقرأ النص
-            if (sender === 'bot' && voiceEnabled && !isSystem) {
-                speakText(text);
-            }
-            return el;
         }
 
-        // === دالة النطق (Text-to-Speech) ===
-        function speakText(text) {
-            if (!window.speechSynthesis) {
-                console.log('المتصفح لا يدعم النطق');
-                return;
-            }
-            // نوقف أي كلام سابق
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'ar-SA';
-            utterance.rate = 0.9; // سرعة النطق
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            // نختار صوت عربي إذا موجود
-            const voices = window.speechSynthesis.getVoices();
-            const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
-            if (arabicVoice) utterance.voice = arabicVoice;
-            window.speechSynthesis.speak(utterance);
-        }
-
-        // === التاريخ ===
         function saveHistory(sender, text) {
             let hist = JSON.parse(localStorage.getItem('niras_history') || '[]');
             hist.push({ sender, text, time: new Date().toISOString() });
@@ -156,7 +121,6 @@
             return JSON.parse(localStorage.getItem('niras_history') || '[]');
         }
 
-        // === الصور ===
         function getImages() {
             return JSON.parse(localStorage.getItem('niras_images') || '[]');
         }
@@ -173,7 +137,6 @@
             }
         }
 
-        // === المكتبة ===
         function showLibrary() {
             const imgs = getImages();
             if (imgs.length === 0) {
@@ -202,7 +165,6 @@
             });
         }
 
-        // === المحادثات السابقة ===
         function showHistory() {
             const hist = getHistory();
             if (hist.length === 0) {
@@ -226,12 +188,10 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // === محادثة جديدة ===
         function newChat() {
             chatBox.innerHTML = '';
         }
 
-        // === معالجة خيارات القائمة ===
         function handleAction(action) {
             dropdown.classList.remove('show');
             switch(action) {
@@ -242,7 +202,6 @@
             }
         }
 
-        // === ربط القائمة ===
         document.querySelectorAll('.dropdown .item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -258,27 +217,13 @@
             dropdown.classList.remove('show');
         });
 
-        // === زر تبديل الصوت (تشغيل/إيقاف) ===
-        voiceToggle.addEventListener('click', function() {
-            voiceEnabled = !voiceEnabled;
-            this.classList.toggle('active');
-            this.textContent = voiceEnabled ? '🔇' : '🔊';
-            if (voiceEnabled) {
-                // نقرأ رسالة تأكيد
-                speakText('تم تفعيل الرد الصوتي.');
-            } else {
-                window.speechSynthesis.cancel();
-            }
-        });
-
-        // === تسجيل الصوت (يكتب النص في المربع) ===
+        // === تسجيل الصوت ===
         let recognition = null;
         micBtn.addEventListener('click', function() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 addMessage('المتصفح لا يدعم التعرف على الصوت.', 'bot', true);
                 return;
             }
-            // إذا كان التسجيل نشطاً، نوقفه
             if (this.classList.contains('listening')) {
                 this.classList.remove('listening');
                 if (recognition) recognition.stop();
@@ -291,13 +236,12 @@
             recognition.interimResults = false;
 
             this.classList.add('listening');
-            addMessage('🎙️ جاري الاستماع...', 'bot', true);
+            addMessage('جاري الاستماع...', 'bot', true);
 
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 userInput.value = transcript;
                 micBtn.classList.remove('listening');
-                // إرسال النص تلقائياً بعد التعرف
                 setTimeout(() => {
                     sendMessage();
                 }, 300);
@@ -318,7 +262,6 @@
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
-            // نضيف رسالة المستخدم
             addMessage(text, 'user');
             userInput.value = '';
             userInput.focus();
@@ -359,16 +302,6 @@
                 reader.readAsDataURL(file);
             }
         });
-
-        // === تحميل الأصوات المتاحة (لتحسين النطق) ===
-        if (window.speechSynthesis) {
-            window.speechSynthesis.getVoices(); // تحميل الأصوات
-            window.speechSynthesis.onvoiceschanged = () => {
-                window.speechSynthesis.getVoices();
-            };
-        }
-
-        // === لا توجد رسائل ترحيبية ===
     })();
 </script>
 </body>
