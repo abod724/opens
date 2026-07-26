@@ -3,27 +3,26 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-    <title>نيراس</title>
+    <title>المساعد</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
         body { background: #ffffff; height: 100dvh; display: flex; justify-content: center; align-items: center; margin: 0; padding: 0; }
         .app { width: 100%; max-width: 450px; height: 100dvh; background: #ffffff; display: flex; flex-direction: column; position: relative; }
 
-        /* شريط علوي أبيض بالكامل */
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #eaeef2; flex-shrink: 0; background: #ffffff; }
-        .header .title { font-size: 18px; font-weight: 500; color: #1a2b3c; letter-spacing: 0.3px; }
-        .header .menu-btn { background: none; border: none; font-size: 20px; color: #5a6b7c; cursor: pointer; padding: 4px 8px; }
+        /* شريط علوي: فقط ٣ نقاط (بدون اسم) */
+        .header { display: flex; justify-content: flex-end; align-items: center; padding: 14px 18px; border-bottom: 1px solid #eaeef2; flex-shrink: 0; background: #ffffff; }
+        .header .menu-btn { background: none; border: none; font-size: 22px; color: #5a6b7c; cursor: pointer; padding: 4px 8px; }
 
         /* القائمة المنسدلة - ٣ خيارات */
         .dropdown { position: absolute; top: 64px; left: 14px; right: 14px; background: white; border-radius: 16px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); display: none; flex-direction: column; z-index: 100; border: 1px solid #eaedf2; }
         .dropdown.show { display: flex; }
         .dropdown .item { display: flex; align-items: center; gap: 12px; padding: 14px 18px; font-size: 15px; color: #1a2b3c; background: none; border: none; width: 100%; text-align: right; cursor: pointer; border-bottom: 1px solid #f0f2f5; }
         .dropdown .item:last-child { border-bottom: none; }
-        .dropdown .item i { width: 22px; font-size: 18px; color: #4a6a8a; }
+        .dropdown .item i { width: 22px; font-size: 18px; color: #5a6b7c; }
         .dropdown .item:hover { background: #f5f7fa; }
 
-        /* صندوق المحادثات - أبيض خلفية */
+        /* صندوق المحادثات - فارغ تماماً */
         #chat { flex: 1; overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; background: #ffffff; }
         .msg { max-width: 80%; padding: 10px 16px; border-radius: 20px; font-size: 15px; line-height: 1.6; word-wrap: break-word; }
         .msg.user { align-self: flex-end; background: #eef2f7; color: #1a2b3c; border-bottom-left-radius: 6px; }
@@ -31,13 +30,13 @@
         .msg .time { font-size: 9px; opacity: 0.35; display: block; margin-top: 4px; }
         .msg.error { background: #fde8e8; color: #a33; align-self: center; max-width: 90%; }
 
-        /* عرض الصور في المكتبة */
+        /* عرض الصور في المكتبة (بدون رموز) */
         .gallery { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
         .gallery .img-wrap { position: relative; display: inline-block; }
         .gallery .img-wrap img { width: 68px; height: 68px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; }
         .gallery .img-wrap .del { position: absolute; top: -6px; left: -6px; background: #c33; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        /* مربع الكتابة - أبيض خلفية */
+        /* مربع الكتابة */
         .input-area { display: flex; align-items: center; gap: 8px; padding: 6px 14px; margin: 8px 14px 16px 14px; background: #f5f7fa; border-radius: 40px; border: 1px solid #dce1e8; flex-shrink: 0; }
         .input-area input { flex: 1; border: none; background: transparent; padding: 12px 4px; font-size: 15px; outline: none; color: #1a2b3c; direction: rtl; }
         .input-area input::placeholder { color: #9aabbc; }
@@ -48,7 +47,6 @@
 
         @media (max-width: 420px) {
             .header { padding: 12px 14px; }
-            .header .title { font-size: 16px; }
             .dropdown { top: 58px; left: 10px; right: 10px; }
             .dropdown .item { padding: 12px 14px; font-size: 14px; }
             #chat { padding: 12px 14px; }
@@ -64,9 +62,8 @@
 
 <div class="app">
 
-    <!-- شريط علوي: اسم "نيراس" بدل الدماغ -->
+    <!-- شريط علوي: فقط ٣ نقاط (بدون اسم) -->
     <div class="header">
-        <span class="title">نيراس</span>
         <button class="menu-btn" id="menuToggle"><i class="fas fa-ellipsis-v"></i></button>
     </div>
 
@@ -77,7 +74,7 @@
         <button class="item" data-action="history"><i class="fas fa-history"></i> المحادثات السابقة</button>
     </div>
 
-    <!-- صندوق المحادثات -->
+    <!-- صندوق المحادثات (يبدأ فارغاً) -->
     <div id="chat"></div>
 
     <!-- مربع الكتابة -->
@@ -103,6 +100,7 @@
         const menuToggle = document.getElementById('menuToggle');
         const dropdown = document.getElementById('dropdown');
 
+        // إضافة رسالة (بدون أي رموز)
         function addMessage(text, sender = 'bot', isSystem = false) {
             const el = document.createElement('div');
             el.className = `msg ${sender}`;
@@ -117,6 +115,7 @@
             }
         }
 
+        // التاريخ (بدون رموز)
         function saveHistory(sender, text) {
             let hist = JSON.parse(localStorage.getItem('niras_history') || '[]');
             hist.push({ sender, text, time: new Date().toISOString() });
@@ -127,6 +126,7 @@
             return JSON.parse(localStorage.getItem('niras_history') || '[]');
         }
 
+        // الصور
         function getImages() {
             return JSON.parse(localStorage.getItem('niras_images') || '[]');
         }
@@ -143,10 +143,11 @@
             }
         }
 
+        // المكتبة (بدون رموز)
         function showLibrary() {
             const imgs = getImages();
             if (imgs.length === 0) {
-                addMessage('لا توجد صور في مكتبتك.', 'bot', true);
+                addMessage('لا توجد صور.', 'bot', true);
                 return;
             }
             let html = '<div class="gallery">';
@@ -171,23 +172,24 @@
             });
         }
 
+        // المحادثات السابقة (بدون أرقام ورموز)
         function showHistory() {
             const hist = getHistory();
             if (hist.length === 0) {
-                addMessage('لا توجد محادثات سابقة.', 'bot', true);
+                addMessage('لا توجد محادثات.', 'bot', true);
                 return;
             }
             let msg = '';
-            hist.slice(-12).forEach((entry, i) => {
+            hist.slice(-12).forEach((entry) => {
                 const t = new Date(entry.time).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-                const who = entry.sender === 'user' ? '👤' : '🤖';
                 const txt = entry.text.length > 40 ? entry.text.substring(0, 40) + '...' : entry.text;
-                msg += `${i+1}. ${who} ${txt} (${t})\n`;
+                msg += `- ${txt} (${t})\n`;
             });
             addMessage(msg, 'bot', true);
+            // أزرار لإعادة النص (بدون رموز)
             hist.slice(-5).forEach(entry => {
                 const btn = document.createElement('button');
-                btn.textContent = `↻ ${entry.text.length > 22 ? entry.text.substring(0, 22) + '…' : entry.text}`;
+                btn.textContent = entry.text.length > 22 ? entry.text.substring(0, 22) + '…' : entry.text;
                 btn.style.cssText = 'background:#f0f2f5;border:none;border-radius:30px;padding:4px 12px;margin:4px;cursor:pointer;font-size:13px;color:#1a2b3c;';
                 btn.onclick = function() { userInput.value = entry.text; userInput.focus(); };
                 chatBox.appendChild(btn);
@@ -195,6 +197,7 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
+        // محادثة جديدة (تفريغ الشات)
         function newChat() {
             chatBox.innerHTML = '';
         }
@@ -209,6 +212,7 @@
             }
         }
 
+        // ربط القائمة
         document.querySelectorAll('.dropdown .item').forEach(item => {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -224,6 +228,7 @@
             dropdown.classList.remove('show');
         });
 
+        // إرسال الرسالة
         async function sendMessage() {
             const text = userInput.value.trim();
             if (!text) return;
@@ -247,6 +252,7 @@
         sendBtn.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
+        // المايك
         micBtn.addEventListener('click', () => {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -264,6 +270,7 @@
             }
         });
 
+        // رفع الصور
         fileBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
@@ -274,7 +281,7 @@
                     imgs.push(ev.target.result);
                     saveImages(imgs);
                     addMessage(`تم رفع ${file.name}`, 'user');
-                    addMessage('حُفظ في المكتبة.', 'bot', true);
+                    addMessage('حُفظ.', 'bot', true);
                     fileInput.value = '';
                 };
                 reader.readAsDataURL(file);
