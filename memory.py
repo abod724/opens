@@ -1,22 +1,17 @@
-from database import get_connection
+# ذاكرة مؤقتة لتخزين آخر 10 محادثات لكل جلسة (اختياري)
+from collections import deque
 
-def save_message(role, content):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO messages (role, content) VALUES (?, ?)",
-        (role, content)
-    )
-    conn.commit()
-    conn.close()
+# قاموس يحمل سجل المحادثات لكل مستخدم (حسب session)
+session_memory = {}
 
-def get_last_messages(limit=10):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT role, content FROM messages ORDER BY id DESC LIMIT ?",
-        (limit,)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return [{"role": row["role"], "content": row["content"]} for row in rows][::-1]
+def get_memory(session_id, limit=10):
+    """استرجاع آخر limit محادثة من الذاكرة المؤقتة"""
+    if session_id not in session_memory:
+        session_memory[session_id] = deque(maxlen=limit)
+    return list(session_memory[session_id])
+
+def add_to_memory(session_id, user_msg, bot_msg):
+    """إضافة محادثة جديدة إلى الذاكرة المؤقتة"""
+    if session_id not in session_memory:
+        session_memory[session_id] = deque(maxlen=10)
+    session_memory[session_id].append({'user': user_msg, 'bot': bot_msg})
