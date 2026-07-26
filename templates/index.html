@@ -2,114 +2,113 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>نيراس - مساعدك الذكي</title>
-    <!-- Font Awesome للأيقونات -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Tahoma', 'Segoe UI', sans-serif;
+            font-family: 'Segoe UI', 'Tahoma', system-ui, sans-serif;
         }
 
         body {
-            background: #f0f4f9;
+            background: #eef2f7;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 0;
+            margin: 0;
         }
 
-        /* الحاوية الرئيسية */
+        /* الحاوية - تناسب الجوال تماماً */
         .app-container {
             width: 100%;
-            max-width: 1100px;
-            height: 92vh;
+            max-width: 480px;    /* حد أقصى عرض الجوال */
+            height: 100vh;      /* يملأ الشاشة بالكامل */
             background: #ffffff;
-            border-radius: 32px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.12);
             display: flex;
             overflow: hidden;
             position: relative;
+            box-shadow: none;
+            border-radius: 0;
         }
 
-        /* ===== الشريط الجانبي (Sidebar) ===== */
+        /* ===== الشريط الجانبي (صغير جداً للجوال) ===== */
         .sidebar {
-            width: 80px;
+            width: 60px;
             background: #f8faff;
-            padding: 24px 12px;
+            padding: 16px 6px;
             display: flex;
             flex-direction: column;
             align-items: center;
             border-left: 1px solid #eef2f7;
-            transition: width 0.3s ease;
             flex-shrink: 0;
-            overflow: hidden;
-            position: relative;
+            height: 100%;
         }
 
         .sidebar .logo {
-            font-size: 28px;
+            font-size: 18px;
             font-weight: 700;
             color: #1a2b4a;
-            margin-bottom: 40px;
-            letter-spacing: -1px;
+            margin-bottom: 28px;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            gap: 6px;
+            gap: 2px;
         }
         .sidebar .logo i {
             color: #4f7df3;
-            font-size: 30px;
+            font-size: 24px;
+        }
+        .sidebar .logo span {
+            font-size: 11px;
         }
 
         .sidebar .nav-icons {
             display: flex;
             flex-direction: column;
-            gap: 28px;
+            gap: 22px;
             align-items: center;
-            margin-top: 20px;
             width: 100%;
         }
-
         .sidebar .nav-icons a {
-            color: #7b8ba3;
-            font-size: 22px;
-            transition: 0.2s;
+            color: #8a9bb5;
+            font-size: 18px;
+            text-decoration: none;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
-            text-decoration: none;
-            font-size: 13px;
-            color: #7b8ba3;
+            gap: 2px;
+            transition: 0.2s;
         }
         .sidebar .nav-icons a i {
-            font-size: 24px;
+            font-size: 20px;
         }
         .sidebar .nav-icons a span {
-            font-size: 10px;
-            opacity: 0.7;
-        }
-        .sidebar .nav-icons a:hover {
-            color: #1a2b4a;
+            font-size: 8px;
+            opacity: 0.6;
         }
         .sidebar .nav-icons a.active {
             color: #4f7df3;
+        }
+        .sidebar .nav-icons a:hover {
+            color: #1a2b4a;
         }
 
         .sidebar .bottom-icons {
             margin-top: auto;
             display: flex;
             flex-direction: column;
-            gap: 24px;
+            gap: 20px;
             align-items: center;
+            padding-bottom: 10px;
         }
         .sidebar .bottom-icons a {
-            color: #7b8ba3;
-            font-size: 20px;
+            color: #8a9bb5;
+            font-size: 18px;
             transition: 0.2s;
         }
         .sidebar .bottom-icons a:hover {
@@ -122,8 +121,10 @@
             display: flex;
             flex-direction: column;
             background: #ffffff;
-            padding: 20px 28px 20px 28px;
-            position: relative;
+            padding: 12px 14px 12px 14px;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
         }
 
         /* الهيدر */
@@ -131,70 +132,63 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #eef2f7;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f0f3f8;
+            flex-shrink: 0;
         }
         .chat-header h2 {
-            font-size: 20px;
+            font-size: 17px;
             font-weight: 600;
             color: #1a2b4a;
         }
         .chat-header h2 i {
             color: #4f7df3;
-            margin-left: 8px;
-        }
-        .chat-header .header-actions {
-            display: flex;
-            gap: 16px;
-            color: #7b8ba3;
+            margin-left: 6px;
             font-size: 18px;
         }
         .chat-header .header-actions i {
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .chat-header .header-actions i:hover {
-            color: #1a2b4a;
+            color: #8a9bb5;
+            font-size: 16px;
+            cursor: default;
         }
 
         /* ===== صندوق المحادثات ===== */
         #chat-box {
             flex: 1;
             overflow-y: auto;
-            padding: 20px 0 10px 0;
+            padding: 12px 0 8px 0;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* الرسائل */
         .message {
-            max-width: 75%;
-            padding: 14px 20px;
-            border-radius: 22px;
-            line-height: 1.6;
-            font-size: 15px;
-            animation: fadeIn 0.3s ease;
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            line-height: 1.5;
+            font-size: 14px;
+            animation: fadeIn 0.25s ease;
             word-wrap: break-word;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
         }
         .message.user {
             align-self: flex-end;
             background: #4f7df3;
             color: white;
-            border-bottom-left-radius: 6px;
+            border-bottom-left-radius: 4px;
         }
         .message.bot {
             align-self: flex-start;
             background: #f1f4f9;
             color: #1a2b4a;
-            border-bottom-right-radius: 6px;
+            border-bottom-right-radius: 4px;
         }
         .message .time {
-            font-size: 10px;
-            opacity: 0.5;
-            margin-top: 6px;
+            font-size: 9px;
+            opacity: 0.4;
+            margin-top: 4px;
             display: block;
         }
         .message.error-msg {
@@ -205,48 +199,48 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* ===== منطقة الإدخال الاحترافية ===== */
+        /* ===== منطقة الإدخال (مضغوطة للجوال) ===== */
         .input-area {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 8px;
             background: #f5f8fc;
-            border-radius: 60px;
-            padding: 6px 6px 6px 18px;
-            margin-top: 16px;
-            border: 1px solid #e0e7f0;
+            border-radius: 50px;
+            padding: 4px 4px 4px 14px;
+            margin-top: 10px;
+            border: 1px solid #e6ecf5;
             transition: 0.3s;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            flex-shrink: 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
         }
         .input-area:focus-within {
             border-color: #4f7df3;
-            box-shadow: 0 4px 20px rgba(79, 125, 243, 0.12);
+            box-shadow: 0 2px 12px rgba(79,125,243,0.10);
         }
 
-        /* الأزرار اليسرى (مايك ورفع الصور) */
         .input-left {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 2px;
         }
         .input-left button {
             background: none;
             border: none;
-            color: #7b8ba3;
-            font-size: 22px;
+            color: #8a9bb5;
+            font-size: 18px;
             cursor: pointer;
-            padding: 8px;
+            padding: 6px;
             border-radius: 50%;
             transition: 0.2s;
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 42px;
-            height: 42px;
+            width: 34px;
+            height: 34px;
         }
         .input-left button:hover {
             background: #e6edf6;
@@ -259,64 +253,64 @@
             background: #dfe8fd;
         }
 
-        /* حقل الكتابة */
         .input-area input {
             flex: 1;
             border: none;
             background: transparent;
-            padding: 12px 6px;
-            font-size: 16px;
+            padding: 10px 4px;
+            font-size: 15px;
             outline: none;
             color: #1a2b4a;
             min-width: 0;
             direction: rtl;
         }
         .input-area input::placeholder {
-            color: #aab7cc;
+            color: #b0c0d4;
+            font-size: 14px;
         }
 
-        /* زر الإرسال (يمين) */
         .input-area .send-btn {
             background: #4f7df3;
             border: none;
             color: white;
-            width: 50px;
-            height: 50px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
-            font-size: 22px;
+            font-size: 18px;
             cursor: pointer;
             transition: 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 4px 14px rgba(79, 125, 243, 0.35);
+            box-shadow: 0 4px 12px rgba(79,125,243,0.30);
         }
         .input-area .send-btn:hover {
             background: #3b66d9;
-            transform: scale(1.04);
+            transform: scale(1.02);
         }
         .input-area .send-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.92);
         }
 
-        /* التجاوب مع الشاشات الصغيرة */
-        @media (max-width: 700px) {
-            .sidebar { width: 60px; padding: 16px 4px; }
-            .sidebar .logo { font-size: 20px; }
-            .sidebar .nav-icons a i { font-size: 20px; }
+        /* ===== تحسين للشاشات الصغيرة جداً ===== */
+        @media (max-width: 420px) {
+            .sidebar { width: 50px; padding: 12px 2px; }
+            .sidebar .logo { font-size: 14px; }
+            .sidebar .logo i { font-size: 20px; }
+            .sidebar .nav-icons a i { font-size: 17px; }
             .sidebar .nav-icons a span { display: none; }
-            .app-container { border-radius: 0; height: 100vh; max-width: 100%; }
-            .main-chat { padding: 12px 16px; }
-            .input-area { padding: 4px 4px 4px 12px; }
-            .input-left button { width: 36px; height: 36px; font-size: 18px; }
-            .input-area .send-btn { width: 44px; height: 44px; font-size: 18px; }
+            .sidebar .bottom-icons a { font-size: 16px; }
+            .main-chat { padding: 8px 10px; }
+            .chat-header h2 { font-size: 15px; }
+            .message { font-size: 13px; padding: 8px 12px; }
+            .input-area input { font-size: 14px; }
+            .input-area .send-btn { width: 38px; height: 38px; font-size: 16px; }
+            .input-left button { width: 30px; height: 30px; font-size: 16px; }
         }
 
-        /* اختفاء العناصر المخفية مؤقتاً */
-        .hidden-feature {
-            display: none;
-        }
+        /* إخفاء عناصر مؤقتة غير مستخدمة */
+        .hidden-feature { display: none; }
     </style>
 </head>
 <body>
@@ -329,33 +323,15 @@
             <i class="fas fa-brain"></i>
             <span>نيراس</span>
         </div>
-
         <div class="nav-icons">
-            <a href="#" class="active" title="الرئيسية">
-                <i class="fas fa-home"></i>
-                <span>الرئيسية</span>
-            </a>
-            <a href="#" title="المكتبة">
-                <i class="fas fa-layer-group"></i>
-                <span>المكتبة</span>
-            </a>
-            <a href="#" title="بحث">
-                <i class="fas fa-search"></i>
-                <span>بحث</span>
-            </a>
-            <a href="#" title="المحادثات السابقة">
-                <i class="fas fa-history"></i>
-                <span>السابقة</span>
-            </a>
+            <a href="#" class="active"><i class="fas fa-home"></i><span>الرئيسية</span></a>
+            <a href="#"><i class="fas fa-layer-group"></i><span>المكتبة</span></a>
+            <a href="#"><i class="fas fa-search"></i><span>بحث</span></a>
+            <a href="#"><i class="fas fa-history"></i><span>السابقة</span></a>
         </div>
-
         <div class="bottom-icons">
-            <a href="#" title="الإعدادات">
-                <i class="fas fa-cog"></i>
-            </a>
-            <a href="#" title="تسجيل الخروج">
-                <i class="fas fa-sign-out-alt"></i>
-            </a>
+            <a href="#"><i class="fas fa-cog"></i></a>
+            <a href="#"><i class="fas fa-sign-out-alt"></i></a>
         </div>
     </div>
 
@@ -365,45 +341,29 @@
         <!-- الهيدر -->
         <div class="chat-header">
             <h2><i class="fas fa-robot"></i> نيراس</h2>
-            <div class="header-actions">
-                <i class="fas fa-ellipsis-v"></i>
-            </div>
+            <div class="header-actions"><i class="fas fa-ellipsis-v"></i></div>
         </div>
 
         <!-- صندوق المحادثة -->
         <div id="chat-box">
-            <!-- الرسائل ستظهر هنا بواسطة JavaScript -->
+            <!-- تظهر الرسائل هنا -->
         </div>
 
-        <!-- ===== منطقة الإدخال الاحترافية ===== -->
+        <!-- ===== مربع الكتابة المصغر للجوال ===== -->
         <div class="input-area">
-            <!-- الجانب الأيسر: مايك + رفع صور -->
             <div class="input-left">
-                <button class="mic-btn" id="micBtn" title="إرسال صوتي">
-                    <i class="fas fa-microphone"></i>
-                </button>
-                <button id="fileBtn" title="رفع صورة أو ملف">
-                    <i class="fas fa-image"></i>
-                </button>
-                <!-- إخفاء حقل رفع الملف الحقيقي -->
+                <button class="mic-btn" id="micBtn" title="إرسال صوتي"><i class="fas fa-microphone"></i></button>
+                <button id="fileBtn" title="رفع صورة"><i class="fas fa-image"></i></button>
                 <input type="file" id="fileInput" accept="image/*" style="display: none;" />
             </div>
-
-            <!-- حقل الكتابة -->
-            <input type="text" id="user-input" placeholder="اكتب رسالتك هنا..." autofocus />
-
-            <!-- زر الإرسال (يمين) -->
-            <button class="send-btn" id="sendBtn">
-                <i class="fas fa-arrow-left"></i>
-            </button>
+            <input type="text" id="user-input" placeholder="اكتب رسالتك..." autofocus />
+            <button class="send-btn" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
         </div>
-
     </div>
 </div>
 
 <script>
     (function() {
-        // عناصر DOM
         const chatBox = document.getElementById('chat-box');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('sendBtn');
@@ -411,7 +371,6 @@
         const fileBtn = document.getElementById('fileBtn');
         const fileInput = document.getElementById('fileInput');
 
-        // === إضافة رسالة للشات ===
         function addMessage(text, sender) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${sender}`;
@@ -422,71 +381,41 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // === إرسال الرسالة ===
         async function sendMessage() {
             const message = userInput.value.trim();
             if (!message) return;
-
             addMessage(message, 'user');
             userInput.value = '';
             userInput.focus();
-
             try {
-                const response = await fetch('/chat', {
+                const res = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message })
                 });
-                const data = await response.json();
-                if (response.ok) {
-                    addMessage(data.response, 'bot');
-                } else {
-                    addMessage(`⚠️ ${data.error || 'خطأ في السيرفر'}`, 'bot error-msg');
-                }
+                const data = await res.json();
+                if (res.ok) addMessage(data.response, 'bot');
+                else addMessage(`⚠️ ${data.error || 'خطأ'}`, 'bot error-msg');
             } catch (e) {
-                addMessage('⚠️ تعذر الاتصال بالسيرفر', 'bot error-msg');
+                addMessage('⚠️ تعذر الاتصال', 'bot error-msg');
             }
         }
 
-        // === أحداث النقر ===
         sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-        userInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-
-        // === زر المايك (محاكاة للعرض) ===
-        micBtn.addEventListener('click', function() {
-            // نضيف رسالة مؤقتة توضح أن الميزة تحت التطوير
-            addMessage('🎙️  ميزة الإدخال الصوتي قريباً...', 'bot');
-        });
-
-        // === زر رفع الصور ===
-        fileBtn.addEventListener('click', function() {
-            fileInput.click();
-        });
-
+        micBtn.addEventListener('click', () => addMessage('🎙️ ميزة الصوت قريباً', 'bot'));
+        fileBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', function(e) {
             if (this.files && this.files.length > 0) {
                 const file = this.files[0];
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    // نضيف رسالة تشير إلى رفع الصورة (للتوضيح)
-                    addMessage(`📎 تم رفع: ${file.name}`, 'user');
-                    // هنا يمكنك لاحقاً إرسال الصورة للخادم عبر Base64
-                };
-                reader.readAsDataURL(file);
-                // إعادة تعيين الحقل عشان يسمح برفع نفس الملف مرة أخرى
+                addMessage(`📎 رفع: ${file.name}`, 'user');
                 fileInput.value = '';
             }
         });
 
-        // === ترحيب أولي ===
-        setTimeout(() => {
-            addMessage('👋 مرحباً! أنا نيراس، مساعدك الذكي. اسألني عن أي شيء.', 'bot');
-        }, 300);
+        setTimeout(() => addMessage('👋 مرحباً! أنا نيراس، اسألني عن أي شيء.', 'bot'), 300);
     })();
 </script>
-
 </body>
 </html>
