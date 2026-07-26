@@ -27,12 +27,10 @@
         .msg .time { font-size: 9px; opacity: 0.35; display: block; margin-top: 4px; }
         .msg.error { background: #fde8e8; color: #a33; align-self: center; max-width: 90%; }
 
-        /* عرض الصور داخل الشات */
-        .msg img.uploaded-image { max-width: 100%; max-height: 200px; border-radius: 12px; margin: 4px 0; border: 1px solid #ddd; }
-        .msg .image-container { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-        .msg .image-container .file-name { font-size: 12px; color: #6a7b8c; }
+        /* عرض الصورة داخل الرسالة */
+        .msg .image-upload { max-width: 100%; max-height: 200px; border-radius: 12px; margin: 4px 0; border: 1px solid #ddd; display: block; }
+        .msg .file-label { font-size: 12px; color: #6a7b8c; margin-top: 2px; display: block; }
 
-        /* معرض المكتبة */
         .gallery { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; }
         .gallery .img-wrap { position: relative; display: inline-block; }
         .gallery .img-wrap img { width: 68px; height: 68px; object-fit: cover; border-radius: 10px; border: 1px solid #ddd; }
@@ -58,7 +56,7 @@
             .input-area input { font-size: 14px; padding: 10px 2px; }
             .input-area .send { width: 40px; height: 40px; font-size: 16px; }
             .input-area .btn-icon { width: 34px; height: 34px; font-size: 18px; }
-            .msg img.uploaded-image { max-height: 150px; }
+            .msg .image-upload { max-height: 150px; }
         }
     </style>
 </head>
@@ -66,22 +64,18 @@
 
 <div class="app">
 
-    <!-- شريط علوي: ٣ نقاط فقط -->
     <div class="header">
         <button class="menu-btn" id="menuToggle"><i class="fas fa-ellipsis-v"></i></button>
     </div>
 
-    <!-- القائمة -->
     <div class="dropdown" id="dropdown">
         <button class="item" data-action="new"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
         <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
         <button class="item" data-action="history"><i class="fas fa-history"></i> المحادثات السابقة</button>
     </div>
 
-    <!-- الشات -->
     <div id="chat"></div>
 
-    <!-- مربع الكتابة -->
     <div class="input-area">
         <button class="btn-icon mic-btn" id="micBtn" title="تسجيل صوت (يكتب النص)"><i class="fas fa-microphone"></i></button>
         <button class="btn-icon" id="fileBtn" title="رفع صورة"><i class="fas fa-image"></i></button>
@@ -104,7 +98,7 @@
         const menuToggle = document.getElementById('menuToggle');
         const dropdown = document.getElementById('dropdown');
 
-        // === دالة إضافة رسالة ===
+        // === دالة إضافة رسالة (مع دعم الصور) ===
         function addMessage(text, sender = 'bot', isSystem = false, imageData = null) {
             const el = document.createElement('div');
             el.className = `msg ${sender}`;
@@ -112,11 +106,8 @@
             
             let content = '';
             if (imageData) {
-                // عرض الصورة داخل الرسالة
-                content = `<div class="image-container">
-                    <img src="${imageData}" class="uploaded-image" />
-                    ${text ? `<span class="file-name">${text}</span>` : ''}
-                </div>`;
+                // عرض الصورة واسم الملف
+                content = `<img src="${imageData}" class="image-upload" /><span class="file-label">${text || 'صورة'}</span>`;
             } else {
                 content = text;
             }
@@ -127,12 +118,11 @@
             chatBox.appendChild(el);
             chatBox.scrollTop = chatBox.scrollHeight;
             
-            if (!isSystem && sender !== 'error' && !imageData) {
-                saveHistory(sender, text);
-            }
-            // إذا كانت صورة، نحفظها كنص "رفع صورة" في التاريخ
-            if (imageData && sender === 'user') {
-                saveHistory(sender, '📷 رفع صورة');
+            // حفظ التاريخ (نحفظ وصف الصورة بدلاً من البيانات الضخمة)
+            if (!isSystem && sender !== 'error') {
+                let historyText = text;
+                if (imageData) historyText = '📷 رفع صورة: ' + (text || 'صورة');
+                saveHistory(sender, historyText);
             }
         }
 
@@ -164,7 +154,7 @@
             }
         }
 
-        // === المكتبة ===
+        // === عرض المكتبة ===
         function showLibrary() {
             const imgs = getImages();
             if (imgs.length === 0) {
@@ -193,7 +183,7 @@
             });
         }
 
-        // === المحادثات السابقة ===
+        // === عرض المحادثات السابقة ===
         function showHistory() {
             const hist = getHistory();
             if (hist.length === 0) {
@@ -317,7 +307,7 @@
         sendBtn.addEventListener('click', sendMessage);
         userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 
-        // === رفع الصور (مع عرضها في الشات) ===
+        // === رفع الصور (مع عرضها داخل الشات) ===
         fileBtn.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
@@ -329,7 +319,7 @@
                     let imgs = getImages();
                     imgs.push(imgData);
                     saveImages(imgs);
-                    // عرض الصورة في الشات مع اسم الملف
+                    // عرض الصورة في الشات
                     addMessage(file.name, 'user', false, imgData);
                     addMessage('حُفظت الصورة في مكتبتك.', 'bot', true);
                     fileInput.value = '';
