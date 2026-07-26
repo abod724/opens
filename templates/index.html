@@ -7,124 +7,275 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background: #eef2f7; height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }
+        body {
+            background: #eef2f7;
+            height: 100dvh;           /* أفضل من vh للجوال */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
 
         .app-container {
-            width: 100%; max-width: 480px; height: 100vh; background: #fff;
-            display: flex; overflow: hidden; position: relative;
+            width: 100%;
+            max-width: 480px;
+            height: 100dvh;           /* ثبات تام */
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
         }
 
-        /* ===== الشريط الجانبي ===== */
-        .sidebar {
-            width: 64px; background: #f8faff; padding: 16px 4px;
-            display: flex; flex-direction: column; align-items: center;
-            border-left: 1px solid #eef2f7; flex-shrink: 0; height: 100%;
-        }
-        .sidebar .logo {
-            font-size: 16px; font-weight: 700; color: #1a2b4a;
-            display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 24px;
-        }
-        .sidebar .logo i { color: #4f7df3; font-size: 22px; }
-        .sidebar .logo span { font-size: 10px; }
-
-        .sidebar .nav-icons {
-            display: flex; flex-direction: column; gap: 20px; align-items: center; width: 100%;
-        }
-        .sidebar .nav-icons button {
-            background: none; border: none; color: #8a9bb5; font-size: 18px; cursor: pointer;
-            display: flex; flex-direction: column; align-items: center; gap: 2px; transition: 0.2s; padding: 4px;
-            width: 100%; border-radius: 8px;
-        }
-        .sidebar .nav-icons button i { font-size: 20px; }
-        .sidebar .nav-icons button span { font-size: 8px; opacity: 0.6; }
-        .sidebar .nav-icons button.active { color: #4f7df3; background: #eef4ff; }
-        .sidebar .nav-icons button:hover { color: #1a2b4a; background: #eef2f7; }
-
-        .sidebar .bottom-icons {
-            margin-top: auto; display: flex; flex-direction: column; gap: 16px; align-items: center; padding-bottom: 12px;
-        }
-        .sidebar .bottom-icons button {
-            background: none; border: none; color: #8a9bb5; font-size: 18px; cursor: pointer; transition: 0.2s; padding: 4px;
-            border-radius: 8px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-        }
-        .sidebar .bottom-icons button:hover { color: #1a2b4a; background: #eef2f7; }
-
-        /* ===== المحتوى الرئيسي ===== */
-        .main-chat {
-            flex: 1; display: flex; flex-direction: column;
-            background: #ffffff; padding: 12px 14px 12px 14px; height: 100%; overflow: hidden;
-        }
-
+        /* ===== الهيدر ===== */
         .chat-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding-bottom: 10px; border-bottom: 1px solid #f0f3f8; flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 18px 12px 18px;
+            border-bottom: 1px solid #f0f3f8;
+            flex-shrink: 0;
+            background: #ffffff;
+            z-index: 10;
         }
-        .chat-header h2 { font-size: 17px; font-weight: 600; color: #1a2b4a; }
-        .chat-header h2 i { color: #4f7df3; margin-left: 6px; font-size: 18px; }
+        .chat-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a2b4a;
+        }
+        .chat-header h2 i {
+            color: #4f7df3;
+            margin-left: 8px;
+        }
+        .chat-header .menu-btn {
+            background: none;
+            border: none;
+            color: #4f5e7a;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 12px;
+            transition: 0.2s;
+        }
+        .chat-header .menu-btn:hover {
+            background: #eef2f7;
+        }
+
+        /* ===== القائمة المنسدلة ===== */
+        .dropdown-menu {
+            position: absolute;
+            top: 70px;
+            left: 18px;
+            right: 18px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+            padding: 12px 0;
+            display: none;
+            flex-direction: column;
+            z-index: 999;
+            border: 1px solid #eef2f7;
+            backdrop-filter: blur(4px);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .dropdown-menu.show {
+            display: flex;
+        }
+        .dropdown-menu .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 20px;
+            font-size: 16px;
+            color: #1a2b4a;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: right;
+            cursor: pointer;
+            transition: 0.15s;
+            border-bottom: 1px solid #f5f8fc;
+        }
+        .dropdown-menu .menu-item:last-child {
+            border-bottom: none;
+        }
+        .dropdown-menu .menu-item i {
+            width: 24px;
+            font-size: 20px;
+            color: #4f7df3;
+        }
+        .dropdown-menu .menu-item:hover {
+            background: #f5f8ff;
+        }
+        .dropdown-menu .menu-item.danger {
+            color: #d34a4a;
+        }
+        .dropdown-menu .menu-item.danger i {
+            color: #d34a4a;
+        }
 
         /* ===== صندوق المحادثات ===== */
         #chat-box {
-            flex: 1; overflow-y: auto; padding: 12px 0 8px 0;
-            display: flex; flex-direction: column; gap: 10px;
-            scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 18px 10px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
         }
         .message {
-            max-width: 85%; padding: 10px 14px; border-radius: 18px;
-            line-height: 1.5; font-size: 14px; animation: fadeIn 0.25s ease;
+            max-width: 85%;
+            padding: 10px 16px;
+            border-radius: 20px;
+            line-height: 1.6;
+            font-size: 15px;
+            animation: fadeIn 0.25s ease;
             word-wrap: break-word;
         }
-        .message.user { align-self: flex-end; background: #4f7df3; color: white; border-bottom-left-radius: 4px; }
-        .message.bot { align-self: flex-start; background: #f1f4f9; color: #1a2b4a; border-bottom-right-radius: 4px; }
-        .message .time { font-size: 9px; opacity: 0.4; margin-top: 4px; display: block; }
-        .message.error-msg { background: #ffe5e5; color: #b33; align-self: center; max-width: 90%; }
-        .message.system { background: #e3f0ff; color: #1a3a6b; align-self: center; max-width: 95%; font-size: 13px; border-radius: 12px; }
+        .message.user {
+            align-self: flex-end;
+            background: #4f7df3;
+            color: white;
+            border-bottom-left-radius: 6px;
+        }
+        .message.bot {
+            align-self: flex-start;
+            background: #f1f4f9;
+            color: #1a2b4a;
+            border-bottom-right-radius: 6px;
+        }
+        .message .time {
+            font-size: 9px;
+            opacity: 0.4;
+            margin-top: 4px;
+            display: block;
+        }
+        .message.error-msg {
+            background: #ffe5e5;
+            color: #b33;
+            align-self: center;
+            max-width: 90%;
+        }
+        .message.system {
+            background: #e8f0fe;
+            color: #1a3a6b;
+            align-self: center;
+            max-width: 95%;
+            font-size: 14px;
+            border-radius: 16px;
+            text-align: center;
+        }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
         /* ===== منطقة الإدخال ===== */
         .input-area {
-            display: flex; align-items: center; gap: 8px;
-            background: #f5f8fc; border-radius: 50px; padding: 4px 4px 4px 14px;
-            margin-top: 10px; border: 1px solid #e6ecf5; transition: 0.3s; flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f5f8fc;
+            border-radius: 50px;
+            padding: 4px 4px 4px 16px;
+            margin: 8px 16px 16px 16px;
+            border: 1px solid #e6ecf5;
+            transition: 0.3s;
+            flex-shrink: 0;
             box-shadow: 0 2px 8px rgba(0,0,0,0.02);
         }
-        .input-area:focus-within { border-color: #4f7df3; box-shadow: 0 2px 12px rgba(79,125,243,0.10); }
-        .input-left { display: flex; align-items: center; gap: 2px; }
+        .input-area:focus-within {
+            border-color: #4f7df3;
+            box-shadow: 0 2px 14px rgba(79,125,243,0.10);
+        }
+        .input-left {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
         .input-left button {
-            background: none; border: none; color: #8a9bb5; font-size: 18px; cursor: pointer;
-            padding: 6px; border-radius: 50%; transition: 0.2s; display: flex; align-items: center; justify-content: center;
-            width: 34px; height: 34px;
+            background: none;
+            border: none;
+            color: #8a9bb5;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 50%;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
         }
-        .input-left button:hover { background: #e6edf6; color: #1a2b4a; }
-        .input-left button.mic-btn { color: #4f7df3; }
-        .input-left button.mic-btn:hover { background: #dfe8fd; }
+        .input-left button:hover {
+            background: #e6edf6;
+            color: #1a2b4a;
+        }
+        .input-left button.mic-btn {
+            color: #4f7df3;
+        }
+        .input-left button.mic-btn:hover {
+            background: #dfe8fd;
+        }
         .input-area input {
-            flex: 1; border: none; background: transparent; padding: 10px 4px;
-            font-size: 15px; outline: none; color: #1a2b4a; min-width: 0; direction: rtl;
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 12px 4px;
+            font-size: 16px;
+            outline: none;
+            color: #1a2b4a;
+            min-width: 0;
+            direction: rtl;
         }
-        .input-area input::placeholder { color: #b0c0d4; font-size: 14px; }
+        .input-area input::placeholder {
+            color: #b0c0d4;
+            font-size: 15px;
+        }
         .input-area .send-btn {
-            background: #4f7df3; border: none; color: white; width: 42px; height: 42px;
-            border-radius: 50%; font-size: 18px; cursor: pointer; transition: 0.3s;
-            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-            box-shadow: 0 4px 12px rgba(79,125,243,0.30);
+            background: #4f7df3;
+            border: none;
+            color: white;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 14px rgba(79,125,243,0.30);
         }
-        .input-area .send-btn:hover { background: #3b66d9; transform: scale(1.02); }
-        .input-area .send-btn:active { transform: scale(0.92); }
+        .input-area .send-btn:hover {
+            background: #3b66d9;
+            transform: scale(1.02);
+        }
+        .input-area .send-btn:active {
+            transform: scale(0.92);
+        }
 
+        /* ===== توافق مع الشاشات الصغيرة ===== */
         @media (max-width: 420px) {
-            .sidebar { width: 52px; padding: 10px 2px; }
-            .sidebar .logo { font-size: 13px; }
-            .sidebar .logo i { font-size: 18px; }
-            .sidebar .nav-icons button i { font-size: 17px; }
-            .sidebar .nav-icons button span { display: none; }
-            .sidebar .bottom-icons button { width: 34px; height: 34px; font-size: 16px; }
-            .main-chat { padding: 8px 10px; }
-            .chat-header h2 { font-size: 15px; }
-            .message { font-size: 13px; padding: 8px 12px; }
-            .input-area input { font-size: 14px; }
-            .input-area .send-btn { width: 38px; height: 38px; font-size: 16px; }
-            .input-left button { width: 30px; height: 30px; font-size: 16px; }
+            .chat-header { padding: 12px 14px 10px 14px; }
+            .chat-header h2 { font-size: 16px; }
+            .dropdown-menu { top: 60px; left: 12px; right: 12px; }
+            .dropdown-menu .menu-item { padding: 12px 16px; font-size: 15px; }
+            #chat-box { padding: 10px 12px 8px 12px; }
+            .message { font-size: 14px; padding: 8px 12px; }
+            .input-area { margin: 6px 12px 12px 12px; }
+            .input-area input { font-size: 15px; padding: 10px 4px; }
+            .input-area .send-btn { width: 40px; height: 40px; font-size: 18px; }
+            .input-left button { width: 34px; height: 34px; font-size: 18px; }
         }
     </style>
 </head>
@@ -132,47 +283,38 @@
 
 <div class="app-container">
 
-    <!-- ===== الشريط الجانبي مع أزرار تفاعلية ===== -->
-    <div class="sidebar">
-        <div class="logo">
-            <i class="fas fa-brain"></i>
-            <span>نيراس</span>
-        </div>
-
-        <div class="nav-icons">
-            <button class="active" data-action="home"><i class="fas fa-home"></i><span>الرئيسية</span></button>
-            <button data-action="library"><i class="fas fa-layer-group"></i><span>المكتبة</span></button>
-            <button data-action="search"><i class="fas fa-search"></i><span>بحث</span></button>
-            <button data-action="history"><i class="fas fa-history"></i><span>السابقة</span></button>
-        </div>
-
-        <div class="bottom-icons">
-            <button data-action="settings"><i class="fas fa-cog"></i></button>
-            <button data-action="logout"><i class="fas fa-sign-out-alt"></i></button>
-        </div>
+    <!-- ===== الهيدر مع زر الثلاث نقاط ===== -->
+    <div class="chat-header">
+        <h2><i class="fas fa-robot"></i> نيراس</h2>
+        <button class="menu-btn" id="menuToggle" aria-label="القائمة">
+            <i class="fas fa-ellipsis-v"></i>
+        </button>
     </div>
 
-    <!-- ===== القسم الرئيسي ===== -->
-    <div class="main-chat">
-        <div class="chat-header">
-            <h2><i class="fas fa-robot"></i> نيراس</h2>
-            <div style="color:#8a9bb5; font-size:16px;"><i class="fas fa-ellipsis-v"></i></div>
-        </div>
+    <!-- ===== القائمة المنسدلة ===== -->
+    <div class="dropdown-menu" id="dropdownMenu">
+        <button class="menu-item" data-action="home"><i class="fas fa-home"></i> الرئيسية</button>
+        <button class="menu-item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
+        <button class="menu-item" data-action="search"><i class="fas fa-search"></i> بحث</button>
+        <button class="menu-item" data-action="history"><i class="fas fa-history"></i> المحادثات السابقة</button>
+        <button class="menu-item" data-action="settings"><i class="fas fa-cog"></i> الإعدادات</button>
+        <button class="menu-item danger" data-action="logout"><i class="fas fa-sign-out-alt"></i> تسجيل الخروج</button>
+    </div>
 
-        <div id="chat-box">
-            <!-- سيتم ملء الرسائل هنا -->
-        </div>
+    <!-- ===== صندوق المحادثة ===== -->
+    <div id="chat-box">
+        <!-- تظهر الرسائل هنا -->
+    </div>
 
-        <!-- ===== مربع الكتابة ===== -->
-        <div class="input-area">
-            <div class="input-left">
-                <button class="mic-btn" id="micBtn" title="إرسال صوتي"><i class="fas fa-microphone"></i></button>
-                <button id="fileBtn" title="رفع صورة"><i class="fas fa-image"></i></button>
-                <input type="file" id="fileInput" accept="image/*" style="display: none;" />
-            </div>
-            <input type="text" id="user-input" placeholder="اكتب رسالتك..." autofocus />
-            <button class="send-btn" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
+    <!-- ===== منطقة الإدخال ===== -->
+    <div class="input-area">
+        <div class="input-left">
+            <button class="mic-btn" id="micBtn" title="إرسال صوتي"><i class="fas fa-microphone"></i></button>
+            <button id="fileBtn" title="رفع صورة"><i class="fas fa-image"></i></button>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;" />
         </div>
+        <input type="text" id="user-input" placeholder="اكتب رسالتك..." autofocus />
+        <button class="send-btn" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
     </div>
 </div>
 
@@ -184,7 +326,9 @@
         const micBtn = document.getElementById('micBtn');
         const fileBtn = document.getElementById('fileBtn');
         const fileInput = document.getElementById('fileInput');
-        let currentAction = 'home';
+        const menuToggle = document.getElementById('menuToggle');
+        const dropdown = document.getElementById('dropdownMenu');
+        let isMenuOpen = false;
 
         // دالة إضافة رسالة
         function addMessage(text, sender = 'bot', isSystem = false) {
@@ -197,47 +341,59 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // دالة عرض محتوى حسب الإجراء
-        function handleAction(action) {
-            // إزالة التفعيل عن الكل
-            document.querySelectorAll('.nav-icons button, .bottom-icons button').forEach(btn => btn.classList.remove('active'));
-            // تفعيل الزر المضغوط
-            const targetBtn = document.querySelector(`[data-action="${action}"]`);
-            if (targetBtn) targetBtn.classList.add('active');
-
-            currentAction = action;
-
-            // عرض رسائل تفاعلية حسب الزر
-            switch(action) {
-                case 'home':
-                    addMessage('🏠 مرحباً بك في الرئيسية. أنا نيراس، اسألني أي شيء.', 'bot', true);
-                    break;
-                case 'library':
-                    addMessage('📚 **المكتبة**\n- ملفاتي الشخصية\n- الإعدادات المتقدمة\n- المساعدة والدعم\n(اختر من القائمة)', 'bot', true);
-                    break;
-                case 'search':
-                    addMessage('🔍 **بحث**\nاكتب كلمة البحث في مربع الكتابة وسأبحث لك.', 'bot', true);
-                    break;
-                case 'history':
-                    addMessage('📜 **المحادثات السابقة**\n1. محادثة اليوم 10:46 ص\n2. محادثة الأمس حول التقنية\n3. محادثة الأسبوع الماضي', 'bot', true);
-                    break;
-                case 'settings':
-                    addMessage('⚙️ **الإعدادات**\n- اللغة: العربية\n- الوضع: نهاري\n- الإشعارات: مفعلة', 'bot', true);
-                    break;
-                case 'logout':
-                    addMessage('🚪 جارٍ تسجيل الخروج...', 'bot', true);
-                    break;
-                default:
-                    break;
-            }
+        // فتح/إغلاق القائمة
+        function toggleMenu() {
+            isMenuOpen = !isMenuOpen;
+            dropdown.classList.toggle('show', isMenuOpen);
         }
 
-        // === ربط الأزرار الجانبية ===
-        document.querySelectorAll('[data-action]').forEach(btn => {
-            btn.addEventListener('click', function(e) {
+        // إغلاق القائمة عند الضغط خارجها
+        document.addEventListener('click', function(e) {
+            const target = e.target;
+            if (!menuToggle.contains(target) && !dropdown.contains(target)) {
+                dropdown.classList.remove('show');
+                isMenuOpen = false;
+            }
+        });
+
+        // زر القائمة
+        menuToggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleMenu();
+        });
+
+        // معالجة خيارات القائمة
+        document.querySelectorAll('.dropdown-menu .menu-item').forEach(item => {
+            item.addEventListener('click', function(e) {
                 e.preventDefault();
                 const action = this.dataset.action;
-                handleAction(action);
+                // إغلاق القائمة
+                dropdown.classList.remove('show');
+                isMenuOpen = false;
+
+                // عرض محتوى حسب الخيار
+                switch(action) {
+                    case 'home':
+                        addMessage('🏠 **الرئيسية**\nأهلاً بك، أنا نيراس، اسألني أي شيء.', 'bot', true);
+                        break;
+                    case 'library':
+                        addMessage('📚 **المكتبة**\n- 📄 ملفاتي الشخصية\n- ⚙️ الإعدادات المتقدمة\n- 🆘 المساعدة والدعم', 'bot', true);
+                        break;
+                    case 'search':
+                        addMessage('🔍 **بحث**\nاكتب كلمة البحث في مربع الكتابة وسأبحث لك.', 'bot', true);
+                        break;
+                    case 'history':
+                        addMessage('📜 **المحادثات السابقة**\n1. اليوم 10:46 ص\n2. الأمس - موضوع التقنية\n3. الأسبوع الماضي', 'bot', true);
+                        break;
+                    case 'settings':
+                        addMessage('⚙️ **الإعدادات**\n- اللغة: العربية\n- المظهر: فاتح\n- الإشعارات: مفعّلة', 'bot', true);
+                        break;
+                    case 'logout':
+                        addMessage('🚪 جارٍ تسجيل الخروج...', 'bot', true);
+                        break;
+                    default:
+                        break;
+                }
             });
         });
 
