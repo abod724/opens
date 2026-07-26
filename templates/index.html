@@ -9,7 +9,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
         body {
             background: #eef2f7;
-            height: 100dvh;           /* أفضل من vh للجوال */
+            height: 100dvh;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -21,7 +21,7 @@
         .app-container {
             width: 100%;
             max-width: 480px;
-            height: 100dvh;           /* ثبات تام */
+            height: 100dvh;
             background: #ffffff;
             display: flex;
             flex-direction: column;
@@ -30,7 +30,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.05);
         }
 
-        /* ===== الهيدر ===== */
+        /* ===== الهيدر (بدون اسم نيراس، بس أيقونة) ===== */
         .chat-header {
             display: flex;
             justify-content: space-between;
@@ -41,14 +41,9 @@
             background: #ffffff;
             z-index: 10;
         }
-        .chat-header h2 {
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a2b4a;
-        }
-        .chat-header h2 i {
+        .chat-header .logo-icon {
+            font-size: 26px;
             color: #4f7df3;
-            margin-left: 8px;
         }
         .chat-header .menu-btn {
             background: none;
@@ -264,10 +259,9 @@
             transform: scale(0.92);
         }
 
-        /* ===== توافق مع الشاشات الصغيرة ===== */
         @media (max-width: 420px) {
             .chat-header { padding: 12px 14px 10px 14px; }
-            .chat-header h2 { font-size: 16px; }
+            .chat-header .logo-icon { font-size: 22px; }
             .dropdown-menu { top: 60px; left: 12px; right: 12px; }
             .dropdown-menu .menu-item { padding: 12px 16px; font-size: 15px; }
             #chat-box { padding: 10px 12px 8px 12px; }
@@ -283,9 +277,9 @@
 
 <div class="app-container">
 
-    <!-- ===== الهيدر مع زر الثلاث نقاط ===== -->
+    <!-- ===== الهيدر (تم إزالة النص نهائياً) ===== -->
     <div class="chat-header">
-        <h2><i class="fas fa-robot"></i> نيراس</h2>
+        <div class="logo-icon"><i class="fas fa-brain"></i></div>
         <button class="menu-btn" id="menuToggle" aria-label="القائمة">
             <i class="fas fa-ellipsis-v"></i>
         </button>
@@ -294,7 +288,7 @@
     <!-- ===== القائمة المنسدلة ===== -->
     <div class="dropdown-menu" id="dropdownMenu">
         <button class="menu-item" data-action="home"><i class="fas fa-home"></i> الرئيسية</button>
-        <button class="menu-item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
+        <button class="menu-item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة (تخزين الصور)</button>
         <button class="menu-item" data-action="search"><i class="fas fa-search"></i> بحث</button>
         <button class="menu-item" data-action="history"><i class="fas fa-history"></i> المحادثات السابقة</button>
         <button class="menu-item" data-action="settings"><i class="fas fa-cog"></i> الإعدادات</button>
@@ -303,7 +297,7 @@
 
     <!-- ===== صندوق المحادثة ===== -->
     <div id="chat-box">
-        <!-- تظهر الرسائل هنا -->
+        <!-- تظهر الرسائل هنا، بدون رسائل ترحيبية -->
     </div>
 
     <!-- ===== منطقة الإدخال ===== -->
@@ -330,7 +324,6 @@
         const dropdown = document.getElementById('dropdownMenu');
         let isMenuOpen = false;
 
-        // دالة إضافة رسالة
         function addMessage(text, sender = 'bot', isSystem = false) {
             const msgDiv = document.createElement('div');
             msgDiv.className = `message ${sender}${isSystem ? ' system' : ''}`;
@@ -341,13 +334,11 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // فتح/إغلاق القائمة
         function toggleMenu() {
             isMenuOpen = !isMenuOpen;
             dropdown.classList.toggle('show', isMenuOpen);
         }
 
-        // إغلاق القائمة عند الضغط خارجها
         document.addEventListener('click', function(e) {
             const target = e.target;
             if (!menuToggle.contains(target) && !dropdown.contains(target)) {
@@ -356,31 +347,28 @@
             }
         });
 
-        // زر القائمة
         menuToggle.addEventListener('click', function(e) {
             e.stopPropagation();
             toggleMenu();
         });
 
-        // معالجة خيارات القائمة
+        // ===== الخيارات الجديدة المعدلة =====
         document.querySelectorAll('.dropdown-menu .menu-item').forEach(item => {
             item.addEventListener('click', function(e) {
                 e.preventDefault();
                 const action = this.dataset.action;
-                // إغلاق القائمة
                 dropdown.classList.remove('show');
                 isMenuOpen = false;
 
-                // عرض محتوى حسب الخيار
                 switch(action) {
                     case 'home':
-                        addMessage('🏠 **الرئيسية**\nأهلاً بك، أنا نيراس، اسألني أي شيء.', 'bot', true);
+                        addMessage('🏠 أهلاً بك في الرئيسية.', 'bot', true);
                         break;
                     case 'library':
-                        addMessage('📚 **المكتبة**\n- 📄 ملفاتي الشخصية\n- ⚙️ الإعدادات المتقدمة\n- 🆘 المساعدة والدعم', 'bot', true);
+                        addMessage('📚 **المكتبة**\nهنا سيتم تخزين صورك وملفاتك.\nيمكنك لاحقاً تحميلها أو تعديلها أو الرجوع لها.', 'bot', true);
                         break;
                     case 'search':
-                        addMessage('🔍 **بحث**\nاكتب كلمة البحث في مربع الكتابة وسأبحث لك.', 'bot', true);
+                        addMessage('🔍 **بحث**\nاكتب كلمة البحث في مربع الكتابة بالأسفل وسأبحث لك.', 'bot', true);
                         break;
                     case 'history':
                         addMessage('📜 **المحادثات السابقة**\n1. اليوم 10:46 ص\n2. الأمس - موضوع التقنية\n3. الأسبوع الماضي', 'bot', true);
@@ -389,7 +377,7 @@
                         addMessage('⚙️ **الإعدادات**\n- اللغة: العربية\n- المظهر: فاتح\n- الإشعارات: مفعّلة', 'bot', true);
                         break;
                     case 'logout':
-                        addMessage('🚪 جارٍ تسجيل الخروج...', 'bot', true);
+                        addMessage('🚪 جاري التوجيه لتسجيل الدخول عبر حساب Google...', 'bot', true);
                         break;
                     default:
                         break;
@@ -431,8 +419,7 @@
             }
         });
 
-        // رسالة ترحيب
-        setTimeout(() => addMessage('👋 مرحباً! أنا نيراس، اسألني عن أي شيء.', 'bot'), 300);
+        // لا توجد رسالة ترحيب (تم إزالتها)
     })();
 </script>
 </body>
