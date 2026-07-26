@@ -1,111 +1,74 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>نيراس - مساعدك الذكي</title>
-
-<style>
-body {
-    font-family: sans-serif;
-    background: #f2f2f2;
-    margin: 0;
-    padding: 20px;
-    direction: rtl;
-}
-.chat-box {
-    height: 70vh;
-    overflow-y: auto;
-    padding: 10px;
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 0 5px #ccc;
-}
-.input-area {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-}
-#userInput {
-    flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-}
-#sendBtn {
-    padding: 10px 20px;
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
-.user-msg {
-    background: #d1e7ff;
-    padding: 8px;
-    margin: 5px 0;
-    border-radius: 8px;
-    text-align: right;
-}
-.bot-msg {
-    background: #e8e8e8;
-    padding: 8px;
-    margin: 5px 0;
-    border-radius: 8px;
-    text-align: left;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نيراس - مساعدك الذكي</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; background: #f4f7fc; margin: 0; padding: 20px; }
+        .chat-container { max-width: 700px; margin: auto; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        #chat-box { height: 400px; overflow-y: auto; border-bottom: 1px solid #ddd; padding: 10px; margin-bottom: 15px; }
+        .user-msg { background: #007bff; color: white; padding: 10px 15px; border-radius: 20px 20px 5px 20px; margin: 5px 0; text-align: right; }
+        .bot-msg { background: #e9ecef; color: black; padding: 10px 15px; border-radius: 20px 20px 20px 5px; margin: 5px 0; text-align: left; }
+        .input-area { display: flex; gap: 10px; }
+        #user-input { flex: 1; padding: 12px; border-radius: 30px; border: 1px solid #ccc; font-size: 16px; }
+        #send-btn { padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 30px; cursor: pointer; }
+        #send-btn:hover { background: #0056b3; }
+        .error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 10px; margin: 10px 0; display: none; }
+    </style>
 </head>
-
 <body>
-
-<h2>نيراس - مساعدك الذكي ✨</h2>
-
-<div id="chatBox" class="chat-box"></div>
-
-<div class="input-area">
-    <input id="userInput" type="text" placeholder="اكتب رسالتك هنا">
-    <button id="sendBtn">إرسال</button>
+<div class="chat-container">
+    <h2 style="text-align: center;">🤖 نيراس - مساعدك الذكي</h2>
+    <div id="chat-box"></div>
+    <div id="error-msg" class="error">⚠️ حدث خطأ، حاول مجدداً.</div>
+    <div class="input-area">
+        <input type="text" id="user-input" placeholder="اكتب رسالتك هنا...">
+        <button id="send-btn">إرسال</button>
+    </div>
 </div>
-
 <script>
-const input = document.getElementById("userInput");
-const sendBtn = document.getElementById("sendBtn");
-const chatBox = document.getElementById("chatBox");
+    const chatBox = document.getElementById('chat-box');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+    const errorMsg = document.getElementById('error-msg');
 
-sendBtn.onclick = function () {
-    const message = input.value.trim();
-    if (!message) return;
+    function addMessage(text, sender) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = sender === 'user' ? 'user-msg' : 'bot-msg';
+        msgDiv.textContent = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
 
-    addMessage("user", message);
-    input.value = "";
+    async function sendMessage() {
+        const message = userInput.value.trim();
+        if (!message) return;
+        addMessage(message, 'user');
+        userInput.value = '';
+        errorMsg.style.display = 'none';
 
-    fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: message })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.response) {
-            addMessage("bot", data.response);
-        } else {
-            addMessage("bot", "خطأ في السيرفر.");
+        try {
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                addMessage(data.response, 'bot');
+            } else {
+                addMessage('⚠️ ' + (data.error || 'خطأ في السيرفر'), 'bot');
+                errorMsg.style.display = 'block';
+            }
+        } catch (e) {
+            addMessage('⚠️ تعذر الاتصال بالسيرفر', 'bot');
+            errorMsg.style.display = 'block';
         }
-    })
-    .catch(() => {
-        addMessage("bot", "تعذر الاتصال بالسيرفر.");
-    });
-};
+    }
 
-function addMessage(sender, text) {
-    const div = document.createElement("div");
-    div.className = sender === "user" ? "user-msg" : "bot-msg";
-    div.textContent = text;
-    chatBox.appendChild(div);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
 </script>
-
 </body>
 </html>
