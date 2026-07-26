@@ -1,25 +1,60 @@
+const chatContainer = document.getElementById('chatContainer');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
+
+// ارسال بالزر
+sendBtn.addEventListener('click', sendMessage);
+
+// ارسال بضغط Enter
+userInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
 async function sendMessage() {
-    const input = document.getElementById("user-input");
-    const text = input.value.trim();
-    if (!text) return;
+    const message = userInput.value.trim();
+    if (!message) return;
 
-    addMessage("user", text);
-    input.value = "";
+    // اضف رسالة المستخدم
+    addMessage(message, 'user');
+    userInput.value = '';
+    sendBtn.disabled = true;
 
-    const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: text})
-    });
+    // مؤشر التحميل
+    const loadingId = addMessage('جاري التفكير...', 'loading');
 
-    const data = await res.json();
-    addMessage("assistant", data.reply);
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({message: message})
+        });
+
+        const data = await res.json();
+        removeMessage(loadingId);
+        addMessage(data.reply || 'عذراً، حدث خطأ.', 'bot');
+
+    } catch (err) {
+        removeMessage(loadingId);
+        addMessage('تعذر الاتصال بالخادم، أعد المحاولة.', 'bot');
+    } finally {
+        sendBtn.disabled = false;
+    }
 }
 
-function addMessage(role, content) {
-    const box = document.getElementById("chat-box");
-    const div = document.createElement("div");
-    div.innerHTML = `<b>${role}:</b> ${content}`;
-    box.appendChild(div);
-    box.scrollTop = box.scrollHeight;
+function addMessage(text, type) {
+    const div = document.createElement('div');
+    div.className = `message ${type}-msg`;
+    div.textContent = text;
+    if (type === 'loading') div.id = 'load-' + Date.now();
+    chatContainer.appendChild(div);
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    return div.id;
+}
+
+function removeMessage(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
 }
