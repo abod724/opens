@@ -7,3 +7,4 @@ beautifulsoup4
 sqlalchemy
 pyjwt
 gunicorn
+psycopg2-binary
