@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, render_template_string
 import openai
 import os
 from datetime import datetime
+from memory import add_message, get_history, clear_memory
 
 app = Flask(__name__)
 
@@ -10,8 +11,7 @@ if not API_KEY:
     raise Exception("المفتاح غير موجود")
 client = openai.OpenAI(api_key=API_KEY)
 
-session_memory = {}
-
+# ========== تحميل ملف المعرفة (اختياري) ==========
 knowledge_content = ""
 possible_names = ["Knowledge.md", "knowledge.md", "معرفة.md", "README.md", "ملف_المعرفة.md"]
 for filename in possible_names:
@@ -22,9 +22,11 @@ for filename in possible_names:
                 break
         except:
             pass
+
 if not knowledge_content:
     knowledge_content = "أنت نبراس، مساعد ذكي."
 
+# ========== تعليمات النظام (بدون ذكر ملف المعرفة) ==========
 SYSTEM_PROMPT = f"""
 أنت "نبراس"، مساعد شخصي ذكي تتحدث باللهجة العامية السعودية البيضاء.
 
@@ -35,11 +37,12 @@ SYSTEM_PROMPT = f"""
 **تعليمات مهمة:**
 - إذا سألك المستخدم عن أي شيء، حاول الإجابة من معرفتك العامة أولاً.
 - إذا كان السؤال يتطلب معلومات حديثة (أخبار، أحداث، طقس)، استخدم البحث بالويب.
-- دائماً حافظ على لهجتك العامية السعودية البيضاء.
+- دائماً حافظ على لهجتك العامية السعودية البيضاء (مثل: "وش"، "إيش"، "كيفك"، "يا هلا"، "تمام").
 - لا تذكر أبداً أن لديك "ملف معرفة" أو أي مصدر محدد.
 - إذا لم تجد المعلومة، قل بصراحة "ما عندي علم".
 """
 
+# ========== الواجهة ==========
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -502,12 +505,14 @@ def chat():
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
         user_id = request.remote_addr
-        if user_id not in session_memory:
-            session_memory[user_id] = []
 
-        session_memory[user_id].append({"role": "user", "content": user_message})
-        chat_history = session_memory[user_id][-10:]
+        # ===== إضافة رسالة المستخدم للذاكرة =====
+        add_message(user_id, "user", user_message)
 
+        # ===== استرجاع آخر 10 رسائل من الذاكرة =====
+        chat_history = get_history(user_id, limit=10)
+
+        # ===== بناء الرسائل لـ ChatGPT =====
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for entry in chat_history:
             messages.append({"role": entry["role"], "content": entry["content"]})
@@ -572,7 +577,8 @@ def chat():
             print(f"❌ خطأ في الرد: {e}")
             reply = "حدث خطأ، حاول مرة أخرى."
 
-        session_memory[user_id].append({"role": "assistant", "content": reply})
+        # ===== حفظ رد المساعد في الذاكرة =====
+        add_message(user_id, "assistant", reply)
 
         return jsonify({"reply": reply})
 
