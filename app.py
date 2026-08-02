@@ -6,11 +6,27 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# ========== مفتاح Google ==========
+# ========== مفتاح Google مع طباعة حالة التأكيد ==========
+print("🔍 جارٍ قراءة المفتاح من البيئة...")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+
 if not GOOGLE_API_KEY:
+    print("❌ لم يتم العثور على GOOGLE_API_KEY في البيئة!")
     raise Exception("GOOGLE_API_KEY غير موجود، ضعه في متغيرات البيئة")
-genai.configure(api_key=GOOGLE_API_KEY)
+else:
+    # نطبع أول 4 أحرف فقط للتحقق من وجوده (وليس المفتاح كاملاً للأمان)
+    print(f"✅ تم العثور على المفتاح، يبدأ بـ: {GOOGLE_API_KEY[:4]}...")
+
+# تهيئة Gemini مع التحقق من الصحة
+try:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    print("✅ تم تهيئة Gemini بنجاح.")
+    # اختبار بسيط للاتصال (نطلب نموذج فقط للتحقق)
+    test_model = genai.GenerativeModel('gemini-2.0-flash-exp')
+    print("✅ نموذج Gemini جاهز للاستخدام.")
+except Exception as e:
+    print(f"❌ فشل تهيئة Gemini: {e}")
+    raise
 
 # ========== نظام الذاكرة ==========
 session_memory = {}
@@ -50,20 +66,17 @@ SYSTEM_PROMPT = f"""
 - إذا لم تجد المعلومة في أي من المصادر، قل بصراحة "ما عندي علم".
 """
 
-# ========== دالة البحث في جوجل (للاستعلامات الحديثة) ==========
+# ========== دالة البحث في جوجل (للاحتياط) ==========
 def search_google(query):
-    """البحث عبر Google Custom Search API"""
-    api_key = os.environ.get("GOOGLE_API_KEY")  # نفس المفتاح
+    """البحث عبر Google Custom Search API (اختياري)"""
+    api_key = os.environ.get("GOOGLE_API_KEY")
     search_engine_id = os.environ.get("CUSTOM_SEARCH_ENGINE_ID")
-    
     if not api_key or not search_engine_id:
         return None
-    
     try:
         url = f"https://www.googleapis.com/customsearch/v1?key={api_key}&cx={search_engine_id}&q={query}"
         response = requests.get(url, timeout=5)
         data = response.json()
-        
         if "items" in data:
             results = []
             for item in data["items"][:3]:
@@ -74,7 +87,7 @@ def search_google(query):
         print(f"⚠️ خطأ في بحث جوجل: {e}")
         return None
 
-# ========== الواجهة (نفسها تماماً) ==========
+# ========== الواجهة (نفسها) ==========
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -578,8 +591,7 @@ def chat():
         session_memory[user_id].append({"role": "user", "content": user_message})
         chat_history = session_memory[user_id][-10:]
 
-        # ========== بناء المحتوى لـ Gemini ==========
-        # نأخذ سياق المحادثة من الذاكرة
+        # بناء سياق المحادثة
         context = ""
         for entry in chat_history:
             if entry["role"] == "user":
@@ -587,7 +599,6 @@ def chat():
             else:
                 context += f"نبراس: {entry['content']}\n"
 
-        # نضيف ملف المعرفة وتعليمات النظام
         prompt = f"""{SYSTEM_PROMPT}
 
         سياق المحادثة السابقة:
@@ -596,7 +607,7 @@ def chat():
         {user_message}
         """
 
-        # ========== البحث بالويب عبر Google (إذا لزم الأمر) ==========
+        # ========== البحث بالويب (اختياري) ==========
         # نستخدم البحث إذا كان السؤال يتطلب معلومات حديثة
         search_result = None
         if any(word in user_message for word in ["أخبار", "اليوم", "الآن", "جديد", "تحديث", "آخر"]):
@@ -608,14 +619,16 @@ def chat():
 
         # ========== توليد الرد باستخدام Gemini ==========
         try:
+            # استخدام النموذج المحدد
             model = genai.GenerativeModel('gemini-2.0-flash-exp')
             response = model.generate_content(prompt)
             reply = response.text.strip()
             if not reply:
                 reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
         except Exception as e:
-            print(f"❌ خطأ في Gemini: {e}")
-            reply = "حدث خطأ في الاتصال بـ Gemini، حاول مرة أخرى."
+            # طباعة الخطأ في السجلات
+            print(f"❌ تفاصيل خطأ Gemini: {e}")
+            reply = f"حدث خطأ في الاتصال بـ Gemini: {str(e)}"
 
         # حفظ المحادثة في الذاكرة
         session_memory[user_id].append({"role": "assistant", "content": reply})
@@ -623,7 +636,7 @@ def chat():
         return jsonify({"reply": reply})
 
     except Exception as e:
-        print(f"❌ خطأ: {e}")
+        print(f"❌ خطأ عام: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
