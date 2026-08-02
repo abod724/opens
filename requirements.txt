@@ -1,6 +1,9 @@
 flask
+flask_cors
+python-dotenv
+openai
 requests
-google-generativeai
-Pillow
+beautifulsoup4
+sqlalchemy
+pyjwt
 gunicorn
-google-genai
