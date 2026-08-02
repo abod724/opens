@@ -1,25 +1,28 @@
-class ConversationMemory:
-    def __init__(self, max_history=20):
-        self.max_history = max_history
-        self.messages = []
+session_memory = {}
 
-    def add_message(self, role, content):
-        self.messages.append({"role": role, "content": content})
-        if len(self.messages) > self.max_history:
-            self.messages = self.messages[-self.max_history:]
+def get_memory(user_id):
+    if user_id not in session_memory:
+        session_memory[user_id] = []
+    return session_memory[user_id]
 
-    def get_context(self):
-        return self.messages
+def add_message(user_id, role, content):
+    if user_id not in session_memory:
+        session_memory[user_id] = []
+    session_memory[user_id].append({"role": role, "content": content})
+    if len(session_memory[user_id]) > 20:
+        session_memory[user_id] = session_memory[user_id][-20:]
 
-    def get_last_n_messages(self, n):
-        return self.messages[-n:] if n > 0 else []
+def get_history(user_id, limit=10):
+    if user_id not in session_memory:
+        return []
+    return session_memory[user_id][-limit:]
 
-    def load_from_db(self, db_connection, session_id):
-        history = db_connection.fetch_history(session_id)
-        self.messages = history[-self.max_history:] if history else []
+def clear_memory(user_id):
+    if user_id in session_memory:
+        session_memory[user_id] = []
 
-    def save_to_db(self, db_connection, session_id):
-        db_connection.save_messages(session_id, self.messages)
+def get_all_memories():
+    return session_memory
 
-    def clear(self):
-        self.messages = []
+def get_session_count():
+    return len(session_memory)
