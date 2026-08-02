@@ -7,17 +7,14 @@ from google.genai import types
 
 app = Flask(__name__)
 
-# استخدام مفتاح Gemini
 API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 if not API_KEY:
-    raise Exception("مفتاح Gemini غير موجود في متغيرات البيئة")
+    raise Exception("مفتاح Gemini غير موجود")
 
 client = genai.Client(api_key=API_KEY)
 
-# ========== نظام الذاكرة ==========
 session_memory = {}
 
-# ========== تحميل ملف المعرفة ==========
 knowledge_content = ""
 possible_names = ["Knowledge.md", "knowledge.md", "معرفة.md", "README.md", "ملف_المعرفة.md"]
 for filename in possible_names:
@@ -32,7 +29,6 @@ for filename in possible_names:
 if not knowledge_content:
     knowledge_content = "أنت نبراس، مساعد ذكي."
 
-# ========== تعليمات النظام ==========
 SYSTEM_PROMPT = f"""
 أنت "نبراس"، مساعد شخصي ذكي تتحدث باللهجة العامية البيضاء.
 
@@ -51,7 +47,6 @@ SYSTEM_PROMPT = f"""
 - إذا لم تجد المعلومة في أي من المصادر، قل بصراحة "ما عندي علم".
 """
 
-# ========== الواجهة (نفس واجهتك تماماً) ==========
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -236,10 +231,8 @@ def chat():
         if user_id not in session_memory:
             session_memory[user_id] = []
 
-        # إعداد محتويات الطلب لـ Gemini
         contents = []
 
-        # إضافة الذاكرة السابقة (آخر 10 رسائل)
         history = session_memory[user_id][-10:]
         for h in history:
             contents.append(
@@ -249,7 +242,6 @@ def chat():
                 )
             )
 
-        # تجهيز رسالة المستخدم الحالية (مع الصورة إن وجدت)
         current_parts = []
         if image_data:
             header, encoded = image_data.split(",", 1)
@@ -264,22 +256,22 @@ def chat():
         )
         contents.append(types.Content(role="user", parts=current_parts))
 
-        # استدعاء نموذج Gemini مع تفعيل ميزة البحث بالويب (Google Search)
+        # ========== تم تغيير النموذج هنا ==========
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",  # <--- تم تغيير النموذج فقط هنا
+            model="gemini-2.0-flash-exp",  # <--- النموذج الجديد المدعوم
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 temperature=0.7,
-                tools=[{"google_search": {}}],  # تفعيل بحث جوجل المدمج
+                tools=[{"google_search": {}}],
             ),
         )
+        # ========================================
 
         reply = response.text.strip()
         if not reply:
             reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
 
-        # حفظ في الذاكرة
         session_memory[user_id].append({"role": "user", "content": user_message})
         session_memory[user_id].append({"role": "assistant", "content": reply})
 
