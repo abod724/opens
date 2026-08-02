@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+import base64  # تأكد من وجود هذا الاستيراد
 from flask import Flask, jsonify, render_template_string, request
 from google import genai
 from google.genai import types
@@ -7,9 +8,9 @@ from google.genai import types
 app = Flask(__name__)
 
 # استخدام مفتاح Gemini
-API_KEY = os.environ.get("GEMINI_API_KEY")
+API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
 if not API_KEY:
-  raise Exception("مفتاح Gemini غير موجود في متغيرات البيئة")
+    raise Exception("مفتاح Gemini غير موجود في متغيرات البيئة")
 
 client = genai.Client(api_key=API_KEY)
 
@@ -20,16 +21,16 @@ session_memory = {}
 knowledge_content = ""
 possible_names = ["Knowledge.md", "knowledge.md", "معرفة.md", "README.md", "ملف_المعرفة.md"]
 for filename in possible_names:
-  if os.path.exists(filename):
-    try:
-      with open(filename, "r", encoding="utf-8") as f:
-        knowledge_content = f.read()
-        break
-    except:
-      pass
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                knowledge_content = f.read()
+                break
+        except:
+            pass
 
 if not knowledge_content:
-  knowledge_content = "أنت نبراس، مساعد ذكي."
+    knowledge_content = "أنت نبراس، مساعد ذكي."
 
 # ========== تعليمات النظام ==========
 SYSTEM_PROMPT = f"""
@@ -51,8 +52,7 @@ SYSTEM_PROMPT = f"""
 """
 
 # ========== الواجهة (نفس واجهتك تماماً) ==========
-HTML_TEMPLATE = """
-<!DOCTYPE html>
+HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8" />
@@ -214,86 +214,83 @@ HTML_TEMPLATE = """
     })();
 </script>
 </body>
-</html>
-"""
+</html>"""
 
 
 @app.route("/")
 def index():
-  return render_template_string(HTML_TEMPLATE)
+    return render_template_string(HTML_TEMPLATE)
 
 
 @app.route("/chat", methods=["POST"])
 def chat():
-  try:
-    data = request.get_json()
-    user_message = data.get("message", "").strip()
-    image_data = data.get("image", None)
+    try:
+        data = request.get_json()
+        user_message = data.get("message", "").strip()
+        image_data = data.get("image", None)
 
-    if not user_message and not image_data:
-      return jsonify({"reply": "اكتب شيء أساعدك فيه"})
+        if not user_message and not image_data:
+            return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-    user_id = request.remote_addr
-    if user_id not in session_memory:
-      session_memory[user_id] = []
+        user_id = request.remote_addr
+        if user_id not in session_memory:
+            session_memory[user_id] = []
 
-    # إعداد محتويات الطلب لـ Gemini
-    contents = []
+        # إعداد محتويات الطلب لـ Gemini
+        contents = []
 
-    # إضافة الذاكرة السابقة (آخر 10 رسائل)
-    history = session_memory[user_id][-10:]
-    for h in history:
-      contents.append(
-          types.Content(
-              role="user" if h["role"] == "user" else "model",
-              parts=[types.Part.from_text(text=h["content"])],
-          )
-      )
+        # إضافة الذاكرة السابقة (آخر 10 رسائل)
+        history = session_memory[user_id][-10:]
+        for h in history:
+            contents.append(
+                types.Content(
+                    role="user" if h["role"] == "user" else "model",
+                    parts=[types.Part.from_text(text=h["content"])],
+                )
+            )
 
-    # تجهيز رسالة المستخدم الحالية (مع الصورة إن وجدت)
-    current_parts = []
-    if image_data:
-      # تحويل Base64 إلى جزء صورة لـ Gemini
-      import base64
+        # تجهيز رسالة المستخدم الحالية (مع الصورة إن وجدت)
+        current_parts = []
+        if image_data:
+            # تحويل Base64 إلى جزء صورة لـ Gemini
+            header, encoded = image_data.split(",", 1)
+            mime_type = header.split(";")[0].split(":")[1]
+            image_bytes = base64.b64decode(encoded)
+            current_parts.append(
+                types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+            )
 
-      header, encoded = image_data.split(",", 1)
-      mime_type = header.split(";")[0].split(":")[1]
-      image_bytes = base64.b64decode(encoded)
-      current_parts.append(
-          types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
-      )
+        current_parts.append(
+            types.Part.from_text(text=user_message or "حلل هذه الصورة")
+        )
+        contents.append(types.Content(role="user", parts=current_parts))
 
-    current_parts.append(
-        types.Part.from_text(text=user_message or "حلل هذه الصورة")
-    )
-    contents.append(types.Content(role="user", parts=current_parts))
+        # استدعاء نموذج Gemini مع تفعيل ميزة البحث بالويب (Google Search)
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",  # <--- تم التغيير هنا فقط
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                temperature=0.7,
+                tools=[{"google_search": {}}],  # تفعيل بحث جوجل المدمج
+            ),
+        )
 
-    # استدعاء نموذج Gemini مع تفعيل ميزة البحث بالويب (Google Search)
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",  # نموذج ممتاز وسريع يدعم البحث والصور
-        contents=contents,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.7,
-            tools=[{"google_search": {}}],  # تفعيل بحث جوجل المدمج
-        ),
-    )
+        reply = response.text.strip()
+        if not reply:
+            reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
 
-    reply = response.text.strip()
-    if not reply:
-      reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
+        # حفظ في الذاكرة
+        session_memory[user_id].append({"role": "user", "content": user_message})
+        session_memory[user_id].append({"role": "assistant", "content": reply})
 
-    # حفظ في الذاكرة
-    session_memory[user_id].append({"role": "user", "content": user_message})
-    session_memory[user_id].append({"role": "assistant", "content": reply})
+        return jsonify({"reply": reply})
 
-    return jsonify({"reply": reply})
-
-  except Exception as e:
-    print(f"❌ خطأ: {e}")
-    return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        print(f"❌ خطأ: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
-  port = int(os.environ.get("PORT", 5000))
-  app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
