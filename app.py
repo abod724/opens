@@ -1,16 +1,15 @@
 from flask import Flask, request, jsonify, render_template_string
-from google import genai
+import google.generativeai as genai
 import os
 import requests
 
 app = Flask(__name__)
 
-# ================= الإعدادات =================
+# ================= المفتاح =================
 API_KEY = os.environ.get("GOOGLE_API_KEY")
 if not API_KEY:
-    raise Exception("GOOGLE_API_KEY مفقود")
-
-client = genai.Client(api_key=API_KEY)
+    raise Exception("GOOGLE_API_KEY مفقود، ضعه في Render")
+genai.configure(api_key=API_KEY)
 
 # ================= ملف المعرفة =================
 knowledge = ""
@@ -21,13 +20,17 @@ for f in ["Knowledge.md", "knowledge.md", "معرفة.md", "README.md"]:
         break
 
 SYSTEM_PROMPT = f"""
-أنت نبراس، مساعد ذكي باللهجة العامية.
-مصادرك: 1. ملف المعرفة (أدناه). 2. معرفتك العامة. 3. البحث بالويب للحديث.
+أنت نبراس، مساعد ذكي تتحدث باللهجة العامية البيضاء.
+مصادرك:
+1. ملف المعرفة (أدناه)
+2. معرفتك العامة
+3. البحث بالويب للمعلومات الحديثة
+
 ملف المعرفة:
 {knowledge or "لا يوجد محتوى خاص."}
 """
 
-# ================= البحث الاختياري =================
+# ================= بحث ويب اختياري =================
 def search_web(query):
     engine_id = os.environ.get("CUSTOM_SEARCH_ENGINE_ID")
     if not engine_id:
@@ -145,7 +148,7 @@ def chat():
     for msg in history[-10:]:
         ctx += f"{msg['role']}: {msg['content']}\n"
     
-    # بحث ويب احتياطي (إذا كان السؤال حديثاً)
+    # بحث ويب اختياري (للمعلومات الحديثة)
     if any(k in user_msg for k in ["أخبار", "اليوم", "الآن", "جديد"]):
         search_res = search_web(user_msg)
         if search_res:
@@ -154,10 +157,8 @@ def chat():
     ctx += f"\nالمستخدم: {user_msg}\nنبراس:"
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
-            contents=ctx
-        )
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+        response = model.generate_content(ctx)
         reply = response.text.strip() or "ما قدرت أجيب رد."
     except Exception as e:
         print(e)
