@@ -1,34 +1,37 @@
 from datetime import datetime
 import os
-import base64
 from flask import Flask, jsonify, render_template_string, request
 from google import genai
 from google.genai import types
 
 app = Flask(__name__)
 
-API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+# استخدام مفتاح Gemini
+API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
-    raise Exception("مفتاح Gemini غير موجود")
+  raise Exception("مفتاح Gemini غير موجود في متغيرات البيئة")
 
 client = genai.Client(api_key=API_KEY)
 
+# ========== نظام الذاكرة ==========
 session_memory = {}
 
+# ========== تحميل ملف المعرفة ==========
 knowledge_content = ""
 possible_names = ["Knowledge.md", "knowledge.md", "معرفة.md", "README.md", "ملف_المعرفة.md"]
 for filename in possible_names:
-    if os.path.exists(filename):
-        try:
-            with open(filename, "r", encoding="utf-8") as f:
-                knowledge_content = f.read()
-                break
-        except:
-            pass
+  if os.path.exists(filename):
+    try:
+      with open(filename, "r", encoding="utf-8") as f:
+        knowledge_content = f.read()
+        break
+    except:
+      pass
 
 if not knowledge_content:
-    knowledge_content = "أنت نبراس، مساعد ذكي."
+  knowledge_content = "أنت نبراس، مساعد ذكي."
 
+# ========== تعليمات النظام ==========
 SYSTEM_PROMPT = f"""
 أنت "نبراس"، مساعد شخصي ذكي تتحدث باللهجة العامية البيضاء.
 
@@ -47,7 +50,9 @@ SYSTEM_PROMPT = f"""
 - إذا لم تجد المعلومة في أي من المصادر، قل بصراحة "ما عندي علم".
 """
 
-HTML_TEMPLATE = """<!DOCTYPE html>
+# ========== الواجهة ==========
+HTML_TEMPLATE = """
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8" />
@@ -209,79 +214,82 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     })();
 </script>
 </body>
-</html>"""
+</html>
+"""
 
 
 @app.route("/")
 def index():
-    return render_template_string(HTML_TEMPLATE)
+  return render_template_string(HTML_TEMPLATE)
 
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    try:
-        data = request.get_json()
-        user_message = data.get("message", "").strip()
-        image_data = data.get("image", None)
+  try:
+    data = request.get_json()
+    user_message = data.get("message", "").strip()
+    image_data = data.get("image", None)
 
-        if not user_message and not image_data:
-            return jsonify({"reply": "اكتب شيء أساعدك فيه"})
+    if not user_message and not image_data:
+      return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        user_id = request.remote_addr
-        if user_id not in session_memory:
-            session_memory[user_id] = []
+    user_id = request.remote_addr
+    if user_id not in session_memory:
+      session_memory[user_id] = []
 
-        contents = []
+    contents = []
 
-        history = session_memory[user_id][-10:]
-        for h in history:
-            contents.append(
-                types.Content(
-                    role="user" if h["role"] == "user" else "model",
-                    parts=[types.Part.from_text(text=h["content"])],
-                )
-            )
+    # إضافة الذاكرة السابقة (آخر 10 رسائل)
+    history = session_memory[user_id][-10:]
+    for h in history:
+      contents.append(
+          types.Content(
+              role="user" if h["role"] == "user" else "model",
+              parts=[types.Part.from_text(text=h["content"])],
+          )
+      )
 
-        current_parts = []
-        if image_data:
-            header, encoded = image_data.split(",", 1)
-            mime_type = header.split(";")[0].split(":")[1]
-            image_bytes = base64.b64decode(encoded)
-            current_parts.append(
-                types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
-            )
+    current_parts = []
+    if image_data:
+      import base64
 
-        current_parts.append(
-            types.Part.from_text(text=user_message or "حلل هذه الصورة")
-        )
-        contents.append(types.Content(role="user", parts=current_parts))
+      header, encoded = image_data.split(",", 1)
+      mime_type = header.split(";")[0].split(":")[1]
+      image_bytes = base64.b64decode(encoded)
+      current_parts.append(
+          types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+      )
 
-        # ========== تم تغيير النموذج هنا ==========
-        response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",  # <--- النموذج الجديد المدعوم
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.7,
-                tools=[{"google_search": {}}],
-            ),
-        )
-        # ========================================
+    current_parts.append(
+        types.Part.from_text(text=user_message or "حلل هذه الصورة")
+    )
+    contents.append(types.Content(role="user", parts=current_parts))
 
-        reply = response.text.strip()
-        if not reply:
-            reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
+    # استدعاء أحدث نموذج مدعوم ومستقر مع تفعيل البحث
+    response = client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=contents,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            temperature=0.7,
+            tools=[{"google_search": {}}],
+        ),
+    )
 
-        session_memory[user_id].append({"role": "user", "content": user_message})
-        session_memory[user_id].append({"role": "assistant", "content": reply})
+    reply = response.text.strip()
+    if not reply:
+      reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
 
-        return jsonify({"reply": reply})
+    session_memory[user_id].append({"role": "user", "content": user_message})
+    session_memory[user_id].append({"role": "assistant", "content": reply})
 
-    except Exception as e:
-        print(f"❌ خطأ: {e}")
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"reply": reply})
+
+  except Exception as e:
+    print(f"❌ خطأ: {e}")
+    return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+  port = int(os.environ.get("PORT", 5000))
+  app.run(host="0.0.0.0", port=port)
