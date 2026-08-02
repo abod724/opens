@@ -1,13 +1,6 @@
 flask
-flask_cors
-python-dotenv
-openai
-requests
-beautifulsoup4
-sqlalchemy
-pyjwt
-gunicorn
-psycopg2-binary
 flask-login
 bcrypt
 psycopg2-binary
+openai
+gunicorn
