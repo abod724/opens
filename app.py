@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# ===== نظام التحكم بالمحادثات (سيتم تحديثه من لوحة التحكم) =====
+# ===== نظام التحكم بالمحادثات =====
 SYSTEM_ENABLED = True
 
 print("🔍 جارٍ قراءة المتغيرات...")
@@ -54,18 +54,41 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return get_user_by_id(user_id)
 
-SYSTEM_PROMPT = """
+# =====================================================================
+# 📂 ربط ملف المعرفة (Knowledge.md)
+# =====================================================================
+knowledge_content = ""
+possible_names = ["Knowledge.md", "knowledge.md", "معرفة.md", "README.md", "ملف_المعرفة.md"]
+for filename in possible_names:
+    if os.path.exists(filename):
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                knowledge_content = f.read()
+                print(f"✅ تم تحميل ملف المعرفة: {filename}")
+                break
+        except Exception as e:
+            print(f"⚠️ خطأ في قراءة {filename}: {e}")
+
+if not knowledge_content:
+    knowledge_content = "أنت نبراس، مساعد ذكي."
+    print("⚠️ لم يتم العثور على ملف معرفة، سيتم استخدام القيمة الافتراضية.")
+# =====================================================================
+
+SYSTEM_PROMPT = f"""
 أنت "نبراس"، مساعد شخصي ذكي تتحدث باللهجة العامية السعودية البيضاء.
 
 **مصادر معرفتك:**
 1. **معرفتك العامة**.
 2. **البحث بالويب** للمعلومات الحديثة (إذا كان السؤال يتطلب ذلك).
 
+**ملف المعرفة الخاص بك (مرجع أساسي):**
+{knowledge_content}
+
 **تعليمات مهمة:**
-- إذا سألك المستخدم عن أي شيء، حاول الإجابة من معرفتك العامة أولاً.
+- إذا سألك المستخدم عن أي شيء، حاول الإجابة من معرفتك العامة أولاً، ثم من ملف المعرفة.
 - إذا كان السؤال يتطلب معلومات حديثة (أخبار، أحداث، طقس)، استخدم البحث بالويب.
 - دائماً حافظ على لهجتك العامية السعودية البيضاء.
-- لا تذكر أبداً أي مصدر محدد لمعلوماتك.
+- لا تذكر أبداً أي مصدر محدد لمعلوماتك (لا تقل "في ملف المعرفة" أو "في معرفتي العامة").
 - إذا لم تجد المعلومة، قل بصراحة "ما عندي علم".
 """
 
@@ -359,11 +382,9 @@ def chat():
         if not user_message and not image_data:
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        # ===== التحقق من حالة النظام (تعطيل/تفعيل) =====
         if not SYSTEM_ENABLED:
             return jsonify({"reply": "⚠️ نظام المحادثات معطل حالياً. يرجى المحاولة لاحقاً."})
 
-        # ===== استثناء حساب المسؤول من الحدود =====
         if current_user.email == "abdullaha0569361@gmail.com":
             can_chat = True
         else:
@@ -750,43 +771,34 @@ def export_conversations():
         headers={'Content-Disposition': f'attachment; filename=memory_{current_user.id}.json'}
     )
 
-# ==================== لوحة تحكم المسؤول (الإعدادات) ====================
-
 @app.route('/admin/settings', methods=['GET', 'POST'])
 @login_required
 def admin_settings():
-    # تأكد من أن المستخدم هو المسؤول
     if current_user.email != "abdullaha0569361@gmail.com":
         return "غير مصرح", 403
 
     from database import execute_query, fetch_one
 
     if request.method == 'POST':
-        # قراءة القيم من النموذج
         free_limit = int(request.form.get('free_limit', 5))
         premium_limit = int(request.form.get('premium_limit', 9999))
         system_enabled = request.form.get('system_enabled', 'on') == 'on'
 
-        # تحديث قاعدة البيانات
         execute_query("UPDATE plans SET daily_limit = %s WHERE name = 'free'", (free_limit,))
         execute_query("UPDATE plans SET daily_limit = %s WHERE name = 'premium'", (premium_limit,))
         
-        # تحديث حالة النظام
         global SYSTEM_ENABLED
         SYSTEM_ENABLED = system_enabled
 
         return redirect(url_for('admin_settings'))
 
-    # جلب الإعدادات الحالية
     free_plan = fetch_one("SELECT daily_limit FROM plans WHERE name = 'free'")
     premium_plan = fetch_one("SELECT daily_limit FROM plans WHERE name = 'premium'")
     
     free_limit = free_plan[0] if free_plan else 5
     premium_limit = premium_plan[0] if premium_plan else 9999
     
-    # عدد المستخدمين الكلي
     total_users = fetch_one("SELECT COUNT(*) FROM users")[0]
-    # عدد المحادثات اليوم
     today = datetime.now().date()
     today_chats = fetch_one("SELECT COUNT(*) FROM conversations WHERE DATE(created_at) = %s", (today,))
     today_chats = today_chats[0] if today_chats else 0
