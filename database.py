@@ -1,6 +1,5 @@
 import os
 import psycopg2
-from psycopg2.extras import Json
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -12,8 +11,7 @@ def get_connection():
 def init_db():
     conn = get_connection()
     cur = conn.cursor()
-    
-    # ========== الجداول القديمة ==========
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -23,7 +21,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS conversations (
             id SERIAL PRIMARY KEY,
@@ -33,10 +31,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # ========== الجداول الجديدة (نظام الاشتراكات) ==========
-    
-    # 1. جدول خطط الاشتراك
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS plans (
             id SERIAL PRIMARY KEY,
@@ -48,8 +43,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # 2. جدول اشتراكات المستخدمين
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS user_subscriptions (
             id SERIAL PRIMARY KEY,
@@ -63,8 +57,7 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
-    
-    # 3. جدول الاستخدام اليومي (لحساب عدد المحادثات)
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS daily_usage (
             id SERIAL PRIMARY KEY,
@@ -74,21 +67,20 @@ def init_db():
             UNIQUE(user_id, usage_date)
         )
     """)
-    
-    # ========== إدخال الخطط الافتراضية ==========
-    # خطة مجانية
+
+    # ===== إدخال الخطط الافتراضية =====
     cur.execute("""
         INSERT INTO plans (name, description, price, daily_limit)
-        VALUES ('free', خطة مجانية للاستخدام الأساسي',  2)
+        VALUES ('free', 'خطة مجانية للاستخدام الأساسي', 0, 5)
         ON CONFLICT (name) DO NOTHING
     """)
-    # خطة مدفوعة (مثال)
+
     cur.execute("""
         INSERT INTO plans (name, description, price, daily_limit)
         VALUES ('premium', 'خطة مدفوعة بمميزات غير محدودة', 5.00, 9999)
         ON CONFLICT (name) DO NOTHING
     """)
-    
+
     conn.commit()
     cur.close()
     conn.close()
