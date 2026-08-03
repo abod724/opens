@@ -41,7 +41,7 @@ def init_db():
             name VARCHAR(50) NOT NULL UNIQUE,
             description TEXT,
             price DECIMAL(10, 2) DEFAULT 0,
-            daily_limit INT DEFAULT 5,
+            daily_limit INT DEFAULT 9999,
             features JSONB DEFAULT '{}',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -79,7 +79,7 @@ def init_db():
 
     cur.execute("""
         INSERT INTO plans (name, description, price, daily_limit)
-        VALUES ('premium', 'خطة مدفوعة بمميزات غير محدودة', 5.00, %s)
+        VALUES ('premium', 'خطة مدفوعة بمميزات غير محدودة', 9999.00, %s)
         ON CONFLICT (name) DO NOTHING
     """, (PREMIUM_PLAN_DAILY_LIMIT,))
 
