@@ -71,7 +71,7 @@ def init_db():
     # ===== إدخال الخطط الافتراضية =====
     cur.execute("""
         INSERT INTO plans (name, description, price, daily_limit)
-        VALUES ('free', 'خطة مجانية للاستخدام الأساسي', 0, 5)
+        VALUES ('free', 'خطة مجانية للاستخدام الأساسي', 0, 2)
         ON CONFLICT (name) DO NOTHING
     """)
 
