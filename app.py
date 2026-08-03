@@ -576,7 +576,7 @@ def view_conversations():
         print(f"❌ خطأ في /conversations: {e}")
         return f"<h2 style='text-align:center;margin-top:50px;color:#c33;'>⚠️ حدث خطأ: {str(e)}</h2>", 500
 
-# ==================== مسار التصدير (الجديد) ====================
+# ==================== مسار التصدير ====================
 
 @app.route('/export')
 @login_required
@@ -602,6 +602,81 @@ def export_conversations():
         mimetype='application/json',
         headers={'Content-Disposition': f'attachment; filename=memory_{current_user.id}.json'}
     )
+
+# ==================== لوحة تحكم المسؤول (للمستخدم abdullaha0569361@gmail.com فقط) ====================
+
+@app.route('/admin/conversations')
+@login_required
+def admin_conversations():
+    # صلاحية المسؤول مخصصة فقط لهذا البريد الإلكتروني
+    if current_user.email != "abdullaha0569361@gmail.com":
+        return "<h2 style='text-align:center;margin-top:50px;color:#c33;'>⛔ غير مصرح لك بالدخول</h2>", 403
+
+    rows = fetch_all("""
+        SELECT u.id, u.email, u.name, c.role, c.content, c.created_at
+        FROM conversations c
+        JOIN users u ON c.user_id = u.id
+        ORDER BY c.created_at DESC
+    """)
+
+    if not rows:
+        return "<h2 style='text-align:center;margin-top:50px;'>📭 لا توجد محادثات بعد.</h2>"
+
+    html = """
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>لوحة تحكم المسؤول - نبراس</title>
+        <style>
+            body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
+            table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+            th{background:#4a6a8a;color:white;padding:12px;text-align:right}
+            td{padding:10px 12px;border-bottom:1px solid #eaeef2}
+            tr:hover{background:#f8f9fa}
+            .role-user{color:#2d7d46;font-weight:bold}
+            .role-assistant{color:#4a6a8a;font-weight:bold}
+            .content{max-width:300px;white-space:pre-wrap;word-break:break-word}
+            .time{font-size:12px;color:#999}
+            .back{display:inline-block;margin-bottom:15px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
+            .back:hover{background:#3a5a7a}
+            h1{color:#1a2b3c}
+        </style>
+    </head>
+    <body>
+        <a href="/" class="back">⬅ العودة للرئيسية</a>
+        <h1>📋 جميع محادثات المستخدمين (لوحة المسؤول)</h1>
+        <table>
+            <tr>
+                <th>#</th>
+                <th>المستخدم</th>
+                <th>الدور</th>
+                <th>المحتوى</th>
+                <th>التاريخ</th>
+            </tr>
+    """
+
+    for idx, row in enumerate(rows, 1):
+        user_name = row[2] or row[1]
+        role_display = '👤 مستخدم' if row[3] == 'user' else '🤖 نبراس'
+        role_class = 'user' if row[3] == 'user' else 'assistant'
+        html += f"""
+            <tr>
+                <td>{idx}</td>
+                <td>{user_name}</td>
+                <td class="role-{role_class}">{role_display}</td>
+                <td class="content">{row[4][:300]}</td>
+                <td class="time">{row[5]}</td>
+            </tr>
+        """
+
+    html += """
+        </table>
+    </body>
+    </html>
+    """
+    return html
 
 # ==================== تشغيل التطبيق ====================
 
