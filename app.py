@@ -5,6 +5,8 @@ from auth import User, get_user_by_id, get_user_by_email, create_user, check_pas
 from memory import add_message, get_history, clear_memory
 import openai
 import os
+import json
+from flask import Response
 
 # ==================== تهيئة التطبيق ====================
 app = Flask(__name__)
@@ -309,7 +311,6 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
 @app.route('/')
 @login_required
 def index():
-    # استقبال طلب استئناف المحادثة
     resume_id = request.args.get('resume')
     if resume_id:
         session['resume_id'] = resume_id
@@ -361,13 +362,9 @@ def chat():
         if not user_message and not image_data:
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        # إضافة رسالة المستخدم إلى الذاكرة
         add_message(current_user.id, "user", user_message)
-
-        # استرجاع آخر 10 رسائل من الذاكرة
         chat_history = get_history(current_user.id, limit=10)
 
-        # بناء الرسائل لـ ChatGPT
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for entry in chat_history:
             messages.append({"role": entry["role"], "content": entry["content"]})
@@ -381,7 +378,6 @@ def chat():
                 ]
             })
 
-        # البحث بالويب (اختياري للأسئلة الحديثة)
         if any(word in user_message for word in ["أخبار", "اليوم", "الآن", "جديد", "تحديث", "آخر", "حدث", "وقت", "الساعة"]):
             try:
                 print(f"🔍 محاولة البحث بالويب عن: {user_message}")
@@ -403,7 +399,6 @@ def chat():
             except Exception as e:
                 print(f"⚠️ فشل البحث بالويب: {e}")
 
-        # الرد النهائي
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
@@ -414,7 +409,6 @@ def chat():
         if not reply:
             reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
 
-        # حفظ رد المساعد في الذاكرة
         add_message(current_user.id, "assistant", reply)
 
         return jsonify({"reply": reply})
@@ -436,7 +430,6 @@ def view_conversations():
         if not rows:
             return "<h2 style='text-align:center;margin-top:50px;'>📭 لا توجد محادثات حتى الآن.</h2>"
 
-        # تقسيم المحادثات إلى فصول (كل 8-12 رسالة، أو حسب الموضوع)
         chapters = []
         current_chapter = []
         for row in rows:
@@ -448,7 +441,6 @@ def view_conversations():
         if current_chapter:
             chapters.append(current_chapter)
 
-        # بناء HTML
         html = """
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
@@ -518,7 +510,6 @@ def view_conversations():
         """
 
         for idx, chapter in enumerate(chapters, 1):
-            # استخراج عنوان من أول رسالة للمستخدم في هذا الفصل
             title = f"المبحث {idx}"
             for row in chapter:
                 if row[1] == 'user':
@@ -526,7 +517,6 @@ def view_conversations():
                     title = f"المبحث {idx}: {first_msg}"
                     break
 
-            # تجهيز رسائل الفصل
             msgs_html = ""
             for row in chapter:
                 role_display = '👤 مستخدم' if row[1] == 'user' else '🤖 نبراس'
@@ -539,7 +529,6 @@ def view_conversations():
                 </div>
                 """
 
-            # زر مواصلة (يرسل إلى صفحة الدردشة)
             first_id = chapter[0][0]
             html += f"""
             <div class="chapter">
@@ -551,6 +540,7 @@ def view_conversations():
                     {msgs_html}
                     <div class="actions">
                         <a href="/?resume={first_id}">▶️ مواصلة المحادثة</a>
+                        <a href="/export" style="background:#2d7d46;">📥 تصدير المحادثات</a>
                     </div>
                 </div>
             </div>
@@ -570,7 +560,6 @@ def view_conversations():
                         arrow.textContent = '▲';
                     }
                 }
-                // فتح أول فصل بشكل افتراضي
                 document.addEventListener('DOMContentLoaded', function() {
                     var firstChapter = document.querySelector('.chapter-header');
                     if (firstChapter) {
@@ -587,7 +576,35 @@ def view_conversations():
         print(f"❌ خطأ في /conversations: {e}")
         return f"<h2 style='text-align:center;margin-top:50px;color:#c33;'>⚠️ حدث خطأ: {str(e)}</h2>", 500
 
+# ==================== مسار التصدير (الجديد) ====================
+
+@app.route('/export')
+@login_required
+def export_conversations():
+    user_id = str(current_user.id)
+    rows = fetch_all(
+        "SELECT role, content, created_at FROM conversations WHERE user_id = %s ORDER BY created_at ASC",
+        (user_id,)
+    )
+
+    data = []
+    for row in rows:
+        data.append({
+            "role": row[0],
+            "content": row[1],
+            "time": row[2].isoformat() if row[2] else None
+        })
+
+    json_data = json.dumps(data, ensure_ascii=False, indent=2)
+
+    return Response(
+        json_data,
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename=memory_{current_user.id}.json'}
+    )
+
 # ==================== تشغيل التطبيق ====================
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
