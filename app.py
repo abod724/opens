@@ -10,10 +10,8 @@ import json
 from flask import Response
 from datetime import datetime, timedelta
 
-# ==================== تهيئة التطبيق ====================
 app = Flask(__name__)
 
-# ==================== قراءة المتغيرات من البيئة ====================
 print("🔍 جارٍ قراءة المتغيرات...")
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -21,14 +19,14 @@ if not OPENAI_API_KEY:
     print("❌ OPENAI_API_KEY غير موجود!")
     raise Exception("OPENAI_API_KEY غير موجود في متغيرات البيئة")
 else:
-    print(f"✅ OPENAI_API_KEY: موجود (يبدأ بـ {OPENAI_API_KEY[:8]}...)")
+    print(f"✅ OPENAI_API_KEY: موجود")
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
     print("❌ DATABASE_URL غير موجود!")
     raise Exception("DATABASE_URL غير موجود في متغيرات البيئة")
 else:
-    print(f"✅ DATABASE_URL: موجود (يبدأ بـ {DATABASE_URL[:20]}...)")
+    print(f"✅ DATABASE_URL: موجود")
 
 SECRET_KEY = os.environ.get("SECRET_KEY")
 if not SECRET_KEY:
@@ -39,15 +37,12 @@ else:
 
 app.secret_key = SECRET_KEY
 
-# ==================== تهيئة قاعدة البيانات ====================
 init_db()
 print("✅ قاعدة البيانات جاهزة")
 
-# ==================== تهيئة OpenAI ====================
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 print("✅ OpenAI جاهز")
 
-# ==================== نظام المصادقة ====================
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -56,7 +51,6 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return get_user_by_id(user_id)
 
-# ==================== تعليمات النظام ====================
 SYSTEM_PROMPT = """
 أنت "نبراس"، مساعد شخصي ذكي تتحدث باللهجة العامية السعودية البيضاء.
 
@@ -71,8 +65,6 @@ SYSTEM_PROMPT = """
 - لا تذكر أبداً أي مصدر محدد لمعلوماتك.
 - إذا لم تجد المعلومة، قل بصراحة "ما عندي علم".
 """
-
-# ==================== واجهات HTML ====================
 
 LOGIN_HTML = """
 <!DOCTYPE html>
@@ -192,11 +184,7 @@ HTML_TEMPLATE = """
         <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
         <button class="item" data-action="history"><i class="fas fa-history"></i> محادثاتي</button>
         <button class="item" onclick="window.location.href='/account'"><i class="fas fa-user-cog"></i> حسابي</button>
-        {% if current_user.email == 'abdullaha0569361@gmail.com' %}
-        <button class="item" onclick="window.location.href='/admin/conversations'">
-            <i class="fas fa-user-shield"></i> لوحة المسؤول
-        </button>
-        {% endif %}
+        <button class="item" onclick="window.location.href='/plans'"><i class="fas fa-crown" style="color:#f1c40f;"></i> الترقية</button>
     </div>
     <div id="chat"></div>
     <div class="input-area">
@@ -314,8 +302,6 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
 </html>
 """
 
-# ==================== المسارات ====================
-
 @app.route('/')
 @login_required
 def index():
@@ -370,22 +356,16 @@ def chat():
         if not user_message and not image_data:
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        # ===== التحقق من الخطة والحد اليومي =====
         can_chat, message = check_daily_limit(current_user.id)
         if not can_chat:
-            # إذا تجاوز الحد، ارجع رسالة تدعو للترقية
             return jsonify({
                 "reply": f"⚠️ {message}\n\n💡 يمكنك الترقية إلى خطة مدفوعة للاستمرار في المحادثات.",
                 "limit_reached": True
             })
 
-        # ===== إضافة رسالة المستخدم إلى الذاكرة =====
         add_message(current_user.id, "user", user_message)
-
-        # ===== استرجاع السياق بعد إضافة الرسالة الجديدة =====
         chat_history = get_history(current_user.id, limit=10)
 
-        # ===== بناء الرسائل لـ ChatGPT =====
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for entry in chat_history:
             messages.append({"role": entry["role"], "content": entry["content"]})
@@ -399,7 +379,6 @@ def chat():
                 ]
             })
 
-        # ===== البحث بالويب (للأسئلة الحديثة) =====
         if any(word in user_message for word in ["أخبار", "اليوم", "الآن", "جديد", "تحديث", "آخر", "حدث", "وقت", "الساعة"]):
             try:
                 print(f"🔍 محاولة البحث بالويب عن: {user_message}")
@@ -421,7 +400,6 @@ def chat():
             except Exception as e:
                 print(f"⚠️ فشل البحث بالويب: {e}")
 
-        # ===== الرد النهائي =====
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
@@ -432,10 +410,7 @@ def chat():
         if not reply:
             reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
 
-        # ===== حفظ رد المساعد في الذاكرة =====
         add_message(current_user.id, "assistant", reply)
-
-        # ===== زيادة عداد المحادثات اليومية (بعد الرد الناجح) =====
         increment_daily_usage(current_user.id)
 
         return jsonify({"reply": reply})
@@ -503,7 +478,76 @@ def account():
                 <div class="label">المحادثات المتبقية اليوم</div>
                 <div class="value" style="color:{'#2d7d46' if remaining > 0 else '#c33'}">{remaining if remaining > 0 else 0}</div>
             </div>
-            <a href="#" class="upgrade-btn">💎 الترقية إلى Premium</a>
+            <a href="/plans" class="upgrade-btn">💎 عرض الخطط</a>
+        </div>
+    </body>
+    </html>
+    """
+    return html
+
+@app.route('/plans')
+@login_required
+def plans():
+    current_plan = get_user_plan(current_user.id)
+    html = """
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>خطط نبراس</title>
+        <style>
+            body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
+            .container{max-width:500px;margin:0 auto}
+            .back{display:inline-block;margin-bottom:20px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
+            .back:hover{background:#3a5a7a}
+            .plan{background:white;border-radius:12px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,0.05);border-right:4px solid #4a6a8a}
+            .plan.premium{border-right-color:#f1c40f}
+            .plan h3{font-size:22px;margin:0 0 5px 0;color:#1a2b3c}
+            .plan .price{font-size:28px;font-weight:bold;color:#2d7d46}
+            .plan .price span{font-size:16px;color:#6a7b8c}
+            .plan ul{margin:15px 0;padding:0;list-style:none}
+            .plan ul li{padding:6px 0;border-bottom:1px solid #f0f2f5}
+            .plan ul li:last-child{border-bottom:none}
+            .btn{display:block;padding:12px;background:#4a6a8a;color:white;text-align:center;text-decoration:none;border-radius:8px;font-size:18px;margin-top:10px}
+            .btn:hover{background:#3a5a7a}
+            .btn.gold{background:#f1c40f;color:#1a2b3c}
+            .btn.gold:hover{background:#e1b50f}
+            .badge{display:inline-block;padding:4px 12px;border-radius:30px;font-size:14px;background:#2d7d46;color:white;margin-bottom:10px}
+            .badge.free{background:#eef2f7;color:#1a2b3c}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <a href="/" class="back">⬅ العودة للرئيسية</a>
+            <h1 style="color:#1a2b3c;">💎 خطط نبراس</h1>
+            <p style="color:#6a7b8c;">اختر الخطة التي تناسبك</p>
+            
+            <div class="plan">
+                <span class="badge free">مجاني</span>
+                <h3>الخطة المجانية</h3>
+                <div class="price">0 <span>ر.س / شهرياً</span></div>
+                <ul>
+                    <li>✅ 5 محادثات يومياً</li>
+                    <li>✅ نموذج أساسي</li>
+                    <li>✅ دعم محدود</li>
+                </ul>
+                <span style="display:block;text-align:center;color:#6a7b8c;padding:8px;">خطتك الحالية</span>
+            </div>
+
+            <div class="plan premium">
+                <span class="badge">مميز</span>
+                <h3>الخطة المدفوعة</h3>
+                <div class="price">5 <span>ر.س / شهرياً</span></div>
+                <ul>
+                    <li>✅ محادثات غير محدودة</li>
+                    <li>✅ نموذج متقدم (GPT-4o)</li>
+                    <li>✅ تحليل الصور</li>
+                    <li>✅ تصدير المحادثات</li>
+                    <li>✅ دعم أولوية</li>
+                </ul>
+                <a href="#" class="btn gold">🚀 اشترك الآن</a>
+            </div>
         </div>
     </body>
     </html>
@@ -669,8 +713,6 @@ def view_conversations():
         print(f"❌ خطأ في /conversations: {e}")
         return f"<h2 style='text-align:center;margin-top:50px;color:#c33;'>⚠️ حدث خطأ: {str(e)}</h2>", 500
 
-# ==================== مسار التصدير ====================
-
 @app.route('/export')
 @login_required
 def export_conversations():
@@ -695,82 +737,6 @@ def export_conversations():
         mimetype='application/json',
         headers={'Content-Disposition': f'attachment; filename=memory_{current_user.id}.json'}
     )
-
-# ==================== لوحة تحكم المسؤول ====================
-
-@app.route('/admin/conversations')
-@login_required
-def admin_conversations():
-    if current_user.email != "abdullaha0569361@gmail.com":
-        return "<h2 style='text-align:center;margin-top:50px;color:#c33;'>⛔ غير مصرح لك بالدخول</h2>", 403
-
-    rows = fetch_all("""
-        SELECT u.id, u.email, u.name, c.role, c.content, c.created_at
-        FROM conversations c
-        JOIN users u ON c.user_id = u.id
-        ORDER BY c.created_at DESC
-    """)
-
-    if not rows:
-        return "<h2 style='text-align:center;margin-top:50px;'>📭 لا توجد محادثات بعد.</h2>"
-
-    html = """
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>لوحة تحكم المسؤول - نبراس</title>
-        <style>
-            body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
-            table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
-            th{background:#4a6a8a;color:white;padding:12px;text-align:right}
-            td{padding:10px 12px;border-bottom:1px solid #eaeef2}
-            tr:hover{background:#f8f9fa}
-            .role-user{color:#2d7d46;font-weight:bold}
-            .role-assistant{color:#4a6a8a;font-weight:bold}
-            .content{max-width:300px;white-space:pre-wrap;word-break:break-word}
-            .time{font-size:12px;color:#999}
-            .back{display:inline-block;margin-bottom:15px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
-            .back:hover{background:#3a5a7a}
-            h1{color:#1a2b3c}
-        </style>
-    </head>
-    <body>
-        <a href="/" class="back">⬅ العودة للرئيسية</a>
-        <h1>📋 جميع محادثات المستخدمين (لوحة المسؤول)</h1>
-        <table>
-            <tr>
-                <th>#</th>
-                <th>المستخدم</th>
-                <th>الدور</th>
-                <th>المحتوى</th>
-                <th>التاريخ</th>
-            </tr>
-    """
-
-    for idx, row in enumerate(rows, 1):
-        user_name = row[2] or row[1]
-        role_display = '👤 مستخدم' if row[3] == 'user' else '🤖 نبراس'
-        role_class = 'user' if row[3] == 'user' else 'assistant'
-        html += f"""
-            <tr>
-                <td>{idx}</td>
-                <td>{user_name}</td>
-                <td class="role-{role_class}">{role_display}</td>
-                <td class="content">{row[4][:300]}</td>
-                <td class="time">{row[5]}</td>
-            </tr>
-        """
-
-    html += """
-        </table>
-    </body>
-    </html>
-    """
-    return html
-
-# ==================== تشغيل التطبيق ====================
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
