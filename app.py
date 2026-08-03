@@ -417,46 +417,58 @@ def chat():
 @app.route('/conversations')
 @login_required
 def view_conversations():
-    rows = fetch_all(
-        "SELECT id, role, content, created_at FROM conversations WHERE user_id = %s ORDER BY created_at DESC",
-        (current_user.id,)
-    )
-    html = """
-    <!DOCTYPE html>
-    <html dir="rtl" lang="ar">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>محادثاتي - نبراس</title>
-        <style>
-            body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
-            table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
-            th{background:#4a6a8a;color:white;padding:12px;text-align:right}
-            td{padding:10px 12px;border-bottom:1px solid #eaeef2}
-            tr:hover{background:#f8f9fa}
-            .role-user{color:#2d7d46;font-weight:bold}
-            .role-assistant{color:#4a6a8a;font-weight:bold}
-            .content{max-width:300px;white-space:pre-wrap;word-break:break-word}
-            .time{font-size:12px;color:#999}
-            .back{display:inline-block;margin-bottom:15px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
-            .back:hover{background:#3a5a7a}
-        </style>
-    </head>
-    <body>
-        <a href="/" class="back">⬅ العودة للرئيسية</a>
-        <h1>📋 محادثاتي</h1>
-        <table>
-            <tr><th>#</th><th>الدور</th><th>المحتوى</th><th>التاريخ</th></tr>
-    """
-    for row in rows:
-        role_display = '👤 مستخدم' if row[1] == 'user' else '🤖 نبراس'
-        html += f"<tr><td>{row[0]}</td><td class='role-{row[1]}'>{role_display}</td><td class='content'>{row[2][:200]}</td><td class='time'>{row[3]}</td></tr>"
-    html += """
-        </table>
-    </body>
-    </html>
-    """
-    return html
+    try:
+        # تحويل user_id إلى نص لتجنب مشاكل نوع البيانات
+        user_id = str(current_user.id)
+        rows = fetch_all(
+            "SELECT id, role, content, created_at FROM conversations WHERE user_id = %s ORDER BY created_at DESC",
+            (user_id,)
+        )
+
+        if not rows:
+            return "<h2 style='text-align:center;margin-top:50px;'>📭 لا توجد محادثات حتى الآن.</h2>"
+
+        html = """
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>محادثاتي - نبراس</title>
+            <style>
+                body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
+                table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+                th{background:#4a6a8a;color:white;padding:12px;text-align:right}
+                td{padding:10px 12px;border-bottom:1px solid #eaeef2}
+                tr:hover{background:#f8f9fa}
+                .role-user{color:#2d7d46;font-weight:bold}
+                .role-assistant{color:#4a6a8a;font-weight:bold}
+                .content{max-width:300px;white-space:pre-wrap;word-break:break-word}
+                .time{font-size:12px;color:#999}
+                .back{display:inline-block;margin-bottom:15px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
+                .back:hover{background:#3a5a7a}
+                .empty{text-align:center;font-size:18px;color:#6a7b8c;padding:40px;}
+            </style>
+        </head>
+        <body>
+            <a href="/" class="back">⬅ العودة للرئيسية</a>
+            <h1>📋 محادثاتي</h1>
+            <table>
+                <tr><th>#</th><th>الدور</th><th>المحتوى</th><th>التاريخ</th></tr>
+        """
+        for row in rows:
+            role_display = '👤 مستخدم' if row[1] == 'user' else '🤖 نبراس'
+            html += f"<tr><td>{row[0]}</td><td class='role-{row[1]}'>{role_display}</td><td class='content'>{row[2][:200]}</td><td class='time'>{row[3]}</td></tr>"
+        html += """
+            </table>
+        </body>
+        </html>
+        """
+        return html
+
+    except Exception as e:
+        print(f"❌ خطأ في /conversations: {e}")
+        return f"<h2 style='text-align:center;margin-top:50px;color:#c33;'>⚠️ حدث خطأ أثناء تحميل المحادثات: {str(e)}</h2>", 500
 
 # ==================== تشغيل التطبيق ====================
 if __name__ == '__main__':
