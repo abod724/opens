@@ -1,6 +1,9 @@
 import os
 import psycopg2
 
+FREE_PLAN_DAILY_LIMIT = 7
+PREMIUM_PLAN_DAILY_LIMIT = 9999
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_connection():
@@ -68,18 +71,17 @@ def init_db():
         )
     """)
 
-    # ===== إدخال الخطط الافتراضية =====
     cur.execute("""
         INSERT INTO plans (name, description, price, daily_limit)
-        VALUES ('free', 'خطة مجانية للاستخدام الأساسي', 0, 2)
+        VALUES ('free', 'خطة مجانية للاستخدام الأساسي', 0, %s)
         ON CONFLICT (name) DO NOTHING
-    """)
+    """, (FREE_PLAN_DAILY_LIMIT,))
 
     cur.execute("""
         INSERT INTO plans (name, description, price, daily_limit)
-        VALUES ('premium', 'خطة مدفوعة بمميزات غير محدودة', 5.00, 9999)
+        VALUES ('premium', 'خطة مدفوعة بمميزات غير محدودة', 5.00, %s)
         ON CONFLICT (name) DO NOTHING
-    """)
+    """, (PREMIUM_PLAN_DAILY_LIMIT,))
 
     conn.commit()
     cur.close()
