@@ -424,7 +424,7 @@ def chat():
 def account():
     plan = get_user_plan(current_user.id)
     daily_usage = get_daily_usage(current_user.id)
-    daily_limit = plan.get('daily_limit', 5)
+    daily_limit = plan.get('daily_limit', 9999)
     remaining = daily_limit - daily_usage
     
     html = f"""
