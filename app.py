@@ -189,6 +189,12 @@ HTML_TEMPLATE = """
         <button class="item" data-action="new"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
         <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
         <button class="item" data-action="history"><i class="fas fa-history"></i> محادثاتي</button>
+        <!-- زر لوحة المسؤول (يظهر فقط للمسؤول) -->
+        {% if current_user.email == 'abdullaha0569361@gmail.com' %}
+        <button class="item" onclick="window.location.href='/admin/conversations'">
+            <i class="fas fa-user-shield"></i> لوحة المسؤول
+        </button>
+        {% endif %}
     </div>
     <div id="chat"></div>
     <div class="input-area">
@@ -362,9 +368,18 @@ def chat():
         if not user_message and not image_data:
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        add_message(current_user.id, "user", user_message)
+        # ===== استرجاع السياق القديم تلقائياً (حتى بعد فترة انقطاع) =====
+        # استرجع آخر 10 رسائل من قاعدة البيانات للمستخدم
         chat_history = get_history(current_user.id, limit=10)
 
+        # إذا لم توجد رسائل سابقة، استخدم السياق الحالي (إذا كان موجوداً)
+        if not chat_history:
+            chat_history = []
+
+        # ===== إضافة رسالة المستخدم إلى الذاكرة =====
+        add_message(current_user.id, "user", user_message)
+
+        # ===== بناء الرسائل لـ ChatGPT =====
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for entry in chat_history:
             messages.append({"role": entry["role"], "content": entry["content"]})
@@ -378,6 +393,7 @@ def chat():
                 ]
             })
 
+        # ===== البحث بالويب (للأسئلة الحديثة) =====
         if any(word in user_message for word in ["أخبار", "اليوم", "الآن", "جديد", "تحديث", "آخر", "حدث", "وقت", "الساعة"]):
             try:
                 print(f"🔍 محاولة البحث بالويب عن: {user_message}")
@@ -399,6 +415,7 @@ def chat():
             except Exception as e:
                 print(f"⚠️ فشل البحث بالويب: {e}")
 
+        # ===== الرد النهائي =====
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=messages,
@@ -409,6 +426,7 @@ def chat():
         if not reply:
             reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
 
+        # ===== حفظ رد المساعد في الذاكرة =====
         add_message(current_user.id, "assistant", reply)
 
         return jsonify({"reply": reply})
@@ -603,12 +621,11 @@ def export_conversations():
         headers={'Content-Disposition': f'attachment; filename=memory_{current_user.id}.json'}
     )
 
-# ==================== لوحة تحكم المسؤول (للمستخدم abdullaha0569361@gmail.com فقط) ====================
+# ==================== لوحة تحكم المسؤول ====================
 
 @app.route('/admin/conversations')
 @login_required
 def admin_conversations():
-    # صلاحية المسؤول مخصصة فقط لهذا البريد الإلكتروني
     if current_user.email != "abdullaha0569361@gmail.com":
         return "<h2 style='text-align:center;margin-top:50px;color:#c33;'>⛔ غير مصرح لك بالدخول</h2>", 403
 
