@@ -3,10 +3,12 @@ from flask_login import LoginManager, login_user, login_required, logout_user, c
 from database import fetch_all, init_db
 from auth import User, get_user_by_id, get_user_by_email, create_user, check_password
 from memory import add_message, get_history, clear_memory
+from subscription import check_daily_limit, increment_daily_usage, get_user_plan, get_daily_usage
 import openai
 import os
 import json
 from flask import Response
+from datetime import datetime, timedelta
 
 # ==================== تهيئة التطبيق ====================
 app = Flask(__name__)
@@ -189,6 +191,7 @@ HTML_TEMPLATE = """
         <button class="item" data-action="new"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
         <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
         <button class="item" data-action="history"><i class="fas fa-history"></i> محادثاتي</button>
+        <button class="item" onclick="window.location.href='/account'"><i class="fas fa-user-cog"></i> حسابي</button>
         {% if current_user.email == 'abdullaha0569361@gmail.com' %}
         <button class="item" onclick="window.location.href='/admin/conversations'">
             <i class="fas fa-user-shield"></i> لوحة المسؤول
@@ -367,7 +370,16 @@ def chat():
         if not user_message and not image_data:
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        # ===== إضافة رسالة المستخدم إلى الذاكرة أولاً =====
+        # ===== التحقق من الخطة والحد اليومي =====
+        can_chat, message = check_daily_limit(current_user.id)
+        if not can_chat:
+            # إذا تجاوز الحد، ارجع رسالة تدعو للترقية
+            return jsonify({
+                "reply": f"⚠️ {message}\n\n💡 يمكنك الترقية إلى خطة مدفوعة للاستمرار في المحادثات.",
+                "limit_reached": True
+            })
+
+        # ===== إضافة رسالة المستخدم إلى الذاكرة =====
         add_message(current_user.id, "user", user_message)
 
         # ===== استرجاع السياق بعد إضافة الرسالة الجديدة =====
@@ -423,11 +435,80 @@ def chat():
         # ===== حفظ رد المساعد في الذاكرة =====
         add_message(current_user.id, "assistant", reply)
 
+        # ===== زيادة عداد المحادثات اليومية (بعد الرد الناجح) =====
+        increment_daily_usage(current_user.id)
+
         return jsonify({"reply": reply})
 
     except Exception as e:
         print(f"❌ خطأ في /chat: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/account')
+@login_required
+def account():
+    plan = get_user_plan(current_user.id)
+    daily_usage = get_daily_usage(current_user.id)
+    daily_limit = plan.get('daily_limit', 5)
+    remaining = daily_limit - daily_usage
+    
+    html = f"""
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>حسابي - نبراس</title>
+        <style>
+            body{{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}}
+            .box{{background:white;border-radius:12px;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,0.05);max-width:400px;margin:0 auto}}
+            h2{{color:#1a2b3c}}
+            .info{{margin:10px 0;padding:8px 0;border-bottom:1px solid #eaeef2}}
+            .label{{color:#6a7b8c;font-size:14px}}
+            .value{{font-size:18px;font-weight:bold;color:#1a2b3c}}
+            .badge{{display:inline-block;padding:4px 12px;border-radius:30px;font-size:14px}}
+            .badge-free{{background:#eef2f7;color:#1a2b3c}}
+            .badge-premium{{background:#2d7d46;color:white}}
+            .back{{display:inline-block;margin-bottom:15px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}}
+            .back:hover{{background:#3a5a7a}}
+            .upgrade-btn{{display:block;margin-top:20px;padding:12px;background:#2d7d46;color:white;text-align:center;text-decoration:none;border-radius:8px;font-size:18px}}
+            .upgrade-btn:hover{{background:#236b3a}}
+        </style>
+    </head>
+    <body>
+        <a href="/" class="back">⬅ العودة للرئيسية</a>
+        <div class="box">
+            <h2>👤 حسابي</h2>
+            <div class="info">
+                <div class="label">الاسم</div>
+                <div class="value">{current_user.name}</div>
+            </div>
+            <div class="info">
+                <div class="label">البريد الإلكتروني</div>
+                <div class="value">{current_user.email}</div>
+            </div>
+            <div class="info">
+                <div class="label">الخطة الحالية</div>
+                <div class="value">
+                    <span class="badge badge-{plan.get('name', 'free')}">
+                        {plan.get('name', 'مجاني').upper()}
+                    </span>
+                </div>
+            </div>
+            <div class="info">
+                <div class="label">المحادثات اليومية</div>
+                <div class="value">{daily_usage} / {daily_limit}</div>
+            </div>
+            <div class="info">
+                <div class="label">المحادثات المتبقية اليوم</div>
+                <div class="value" style="color:{'#2d7d46' if remaining > 0 else '#c33'}">{remaining if remaining > 0 else 0}</div>
+            </div>
+            <a href="#" class="upgrade-btn">💎 الترقية إلى Premium</a>
+        </div>
+    </body>
+    </html>
+    """
+    return html
 
 @app.route('/conversations')
 @login_required
