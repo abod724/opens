@@ -79,7 +79,7 @@ def init_db():
     # خطة مجانية
     cur.execute("""
         INSERT INTO plans (name, description, price, daily_limit)
-        VALUES ('free', 'خطة مجانية للاستخدام الأساسي', 0, 5)
+        VALUES ('free', خطة مجانية للاستخدام الأساسي',  2)
         ON CONFLICT (name) DO NOTHING
     """)
     # خطة مدفوعة (مثال)
