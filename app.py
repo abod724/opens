@@ -12,6 +12,9 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
+# ===== نظام التحكم بالمحادثات (سيتم تحديثه من لوحة التحكم) =====
+SYSTEM_ENABLED = True
+
 print("🔍 جارٍ قراءة المتغيرات...")
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -356,7 +359,16 @@ def chat():
         if not user_message and not image_data:
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        can_chat, message = check_daily_limit(current_user.id)
+        # ===== التحقق من حالة النظام (تعطيل/تفعيل) =====
+        if not SYSTEM_ENABLED:
+            return jsonify({"reply": "⚠️ نظام المحادثات معطل حالياً. يرجى المحاولة لاحقاً."})
+
+        # ===== استثناء حساب المسؤول من الحدود =====
+        if current_user.email == "abdullaha0569361@gmail.com":
+            can_chat = True
+        else:
+            can_chat, message = check_daily_limit(current_user.id)
+
         if not can_chat:
             return jsonify({
                 "reply": f"⚠️ {message}\n\n💡 يمكنك الترقية إلى خطة مدفوعة للاستمرار في المحادثات.",
@@ -424,7 +436,7 @@ def chat():
 def account():
     plan = get_user_plan(current_user.id)
     daily_usage = get_daily_usage(current_user.id)
-    daily_limit = plan.get('daily_limit', 9999)
+    daily_limit = plan.get('daily_limit', 5)
     remaining = daily_limit - daily_usage
     
     html = f"""
@@ -737,6 +749,107 @@ def export_conversations():
         mimetype='application/json',
         headers={'Content-Disposition': f'attachment; filename=memory_{current_user.id}.json'}
     )
+
+# ==================== لوحة تحكم المسؤول (الإعدادات) ====================
+
+@app.route('/admin/settings', methods=['GET', 'POST'])
+@login_required
+def admin_settings():
+    # تأكد من أن المستخدم هو المسؤول
+    if current_user.email != "abdullaha0569361@gmail.com":
+        return "غير مصرح", 403
+
+    from database import execute_query, fetch_one
+
+    if request.method == 'POST':
+        # قراءة القيم من النموذج
+        free_limit = int(request.form.get('free_limit', 5))
+        premium_limit = int(request.form.get('premium_limit', 9999))
+        system_enabled = request.form.get('system_enabled', 'on') == 'on'
+
+        # تحديث قاعدة البيانات
+        execute_query("UPDATE plans SET daily_limit = %s WHERE name = 'free'", (free_limit,))
+        execute_query("UPDATE plans SET daily_limit = %s WHERE name = 'premium'", (premium_limit,))
+        
+        # تحديث حالة النظام
+        global SYSTEM_ENABLED
+        SYSTEM_ENABLED = system_enabled
+
+        return redirect(url_for('admin_settings'))
+
+    # جلب الإعدادات الحالية
+    free_plan = fetch_one("SELECT daily_limit FROM plans WHERE name = 'free'")
+    premium_plan = fetch_one("SELECT daily_limit FROM plans WHERE name = 'premium'")
+    
+    free_limit = free_plan[0] if free_plan else 5
+    premium_limit = premium_plan[0] if premium_plan else 9999
+    
+    # عدد المستخدمين الكلي
+    total_users = fetch_one("SELECT COUNT(*) FROM users")[0]
+    # عدد المحادثات اليوم
+    today = datetime.now().date()
+    today_chats = fetch_one("SELECT COUNT(*) FROM conversations WHERE DATE(created_at) = %s", (today,))
+    today_chats = today_chats[0] if today_chats else 0
+
+    system_status_class = "on" if SYSTEM_ENABLED else "off"
+    system_status_text = "مفعل" if SYSTEM_ENABLED else "معطل"
+
+    html = f"""
+    <!DOCTYPE html>
+    <html dir="rtl" lang="ar">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>إعدادات نظام المحادثات - نبراس</title>
+        <style>
+            body{{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}}
+            .container{{max-width:600px;margin:0 auto}}
+            .box{{background:white;border-radius:12px;padding:25px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}}
+            h2{{color:#1a2b3c}}
+            label{{display:block;margin:15px 0 5px 0;color:#1a2b3c;font-weight:bold}}
+            input[type="number"]{{width:100%;padding:10px;border:1px solid #dce1e8;border-radius:8px;font-size:16px}}
+            input[type="checkbox"]{{width:20px;height:20px;margin-right:10px}}
+            button{{background:#4a6a8a;color:white;border:none;padding:12px 24px;border-radius:8px;font-size:18px;cursor:pointer;margin-top:20px}}
+            button:hover{{background:#3a5a7a}}
+            .stat{{display:inline-block;margin:10px 15px 10px 0;padding:10px 15px;background:#f0f2f5;border-radius:8px}}
+            .stat span{{font-weight:bold;color:#1a2b3c}}
+            .back{{display:inline-block;margin-bottom:15px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}}
+            .back:hover{{background:#3a5a7a}}
+            .system-status{{padding:10px;border-radius:8px;margin:10px 0}}
+            .system-status.on{{background:#d4edda;color:#155724}}
+            .system-status.off{{background:#f8d7da;color:#721c24}}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <a href="/" class="back">⬅ العودة للرئيسية</a>
+            <div class="box">
+                <h2>⚙️ إعدادات نظام المحادثات</h2>
+                
+                <div class="stat">👥 <span>{total_users}</span> مستخدم</div>
+                <div class="stat">💬 <span>{today_chats}</span> محادثة اليوم</div>
+                
+                <div class="system-status {system_status_class}">✅ النظام {system_status_text}</div>
+
+                <form method="POST">
+                    <label for="free_limit">حد الخطة المجانية (عدد المحادثات اليومية)</label>
+                    <input type="number" name="free_limit" value="{free_limit}" min="1" max="9999">
+                    
+                    <label for="premium_limit">حد الخطة المدفوعة (عدد المحادثات اليومية)</label>
+                    <input type="number" name="premium_limit" value="{premium_limit}" min="1" max="9999">
+                    
+                    <label>
+                        <input type="checkbox" name="system_enabled" {'checked' if SYSTEM_ENABLED else ''}> تفعيل نظام الحدود
+                    </label>
+
+                    <button type="submit">💾 حفظ الإعدادات</button>
+                </form>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    return html
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
