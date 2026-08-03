@@ -1,294 +1,508 @@
+from flask import Flask, request, jsonify, render_template_string, session, redirect, url_for
+from flask_login import LoginManager, login_user, login_required, logout_user, current_user
+from database import fetch_all, init_db
+from auth import User, get_user_by_id, get_user_by_email, create_user, check_password
+from memory import add_message, get_history, clear_memory
+import openai
 import os
-import sqlite3
-from datetime import datetime
-from flask import Flask, request, render_template_string, redirect, url_for
-from dotenv import load_dotenv
-from openai import OpenAI
 
-# ========== 1. تحميل المفتاح ==========
-load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
-if not api_key:
-    # ضع مفتاحك هنا مباشرة إن لم يكن لديك ملف .env
-    api_key = "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # غير هذا بالمفتاح الحقيقي
-
-client = OpenAI(api_key=api_key)
-
-# ========== 2. قاعدة البيانات (SQLite) ==========
-DB_PATH = "conversations.db"
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-def init_db():
-    with get_db() as conn:
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS conversations (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                title TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-        ''')
-        conn.execute('''
-            CREATE TABLE IF NOT EXISTS messages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id INTEGER NOT NULL,
-                role TEXT NOT NULL,
-                content TEXT NOT NULL,
-                timestamp TEXT NOT NULL,
-                FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-            )
-        ''')
-init_db()
-
-def create_conversation(title):
-    now = datetime.now().isoformat()
-    with get_db() as conn:
-        cur = conn.execute(
-            "INSERT INTO conversations (title, created_at, updated_at) VALUES (?, ?, ?)",
-            (title, now, now)
-        )
-        return cur.lastrowid
-
-def save_message(conv_id, role, content):
-    now = datetime.now().isoformat()
-    with get_db() as conn:
-        conn.execute(
-            "INSERT INTO messages (conversation_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
-            (conv_id, role, content, now)
-        )
-        conn.execute(
-            "UPDATE conversations SET updated_at = ? WHERE id = ?",
-            (now, conv_id)
-        )
-
-def get_all_conversations():
-    with get_db() as conn:
-        rows = conn.execute("SELECT * FROM conversations ORDER BY updated_at DESC").fetchall()
-        return [dict(row) for row in rows]
-
-def get_messages(conv_id):
-    with get_db() as conn:
-        rows = conn.execute(
-            "SELECT role, content FROM messages WHERE conversation_id = ? ORDER BY timestamp ASC",
-            (conv_id,)
-        ).fetchall()
-        return [{"role": r["role"], "content": r["content"]} for r in rows]
-
-def delete_conversation(conv_id):
-    with get_db() as conn:
-        conn.execute("DELETE FROM conversations WHERE id = ?", (conv_id,))
-
-# ========== 3. الذاكرة المؤقتة (لكل محادثة) ==========
-active_memory = {}
-
-class Memory:
-    def __init__(self, max_history=50):
-        self.messages = []
-        self.max_history = max_history
-
-    def add(self, role, content):
-        self.messages.append({"role": role, "content": content})
-        if len(self.messages) > self.max_history:
-            self.messages = self.messages[-self.max_history:]
-
-    def get(self):
-        return self.messages
-
-    def load(self, msgs):
-        self.messages = msgs[-self.max_history:] if msgs else []
-
-def get_memory(conv_id):
-    if conv_id not in active_memory:
-        mem = Memory()
-        mem.load(get_messages(conv_id))
-        active_memory[conv_id] = mem
-    return active_memory[conv_id]
-
-# ========== 4. تطبيق Flask ==========
+# ==================== تهيئة التطبيق ====================
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
 
-# ========== 5. واجهات HTML (مدمجة) ==========
-INDEX_HTML = """
+# ==================== قراءة المتغيرات من البيئة ====================
+print("🔍 جارٍ قراءة المتغيرات...")
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    print("❌ OPENAI_API_KEY غير موجود!")
+    raise Exception("OPENAI_API_KEY غير موجود في متغيرات البيئة")
+else:
+    print(f"✅ OPENAI_API_KEY: موجود (يبدأ بـ {OPENAI_API_KEY[:8]}...)")
+
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    print("❌ DATABASE_URL غير موجود!")
+    raise Exception("DATABASE_URL غير موجود في متغيرات البيئة")
+else:
+    print(f"✅ DATABASE_URL: موجود (يبدأ بـ {DATABASE_URL[:20]}...)")
+
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    print("⚠️ SECRET_KEY غير موجود، سيتم استخدام القيمة الافتراضية")
+    SECRET_KEY = "default-secret-key-change-in-production"
+else:
+    print(f"✅ SECRET_KEY: موجود")
+
+app.secret_key = SECRET_KEY
+
+# ==================== تهيئة قاعدة البيانات ====================
+init_db()
+print("✅ قاعدة البيانات جاهزة")
+
+# ==================== تهيئة OpenAI ====================
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
+print("✅ OpenAI جاهز")
+
+# ==================== نظام المصادقة ====================
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return get_user_by_id(user_id)
+
+# ==================== تعليمات النظام ====================
+SYSTEM_PROMPT = """
+أنت "نبراس"، مساعد شخصي ذكي تتحدث باللهجة العامية السعودية البيضاء.
+
+**مصادر معرفتك:**
+1. **معرفتك العامة**.
+2. **البحث بالويب** للمعلومات الحديثة (إذا كان السؤال يتطلب ذلك).
+
+**تعليمات مهمة:**
+- إذا سألك المستخدم عن أي شيء، حاول الإجابة من معرفتك العامة أولاً.
+- إذا كان السؤال يتطلب معلومات حديثة (أخبار، أحداث، طقس)، استخدم البحث بالويب.
+- دائماً حافظ على لهجتك العامية السعودية البيضاء.
+- لا تذكر أبداً أي مصدر محدد لمعلوماتك.
+- إذا لم تجد المعلومة، قل بصراحة "ما عندي علم".
+"""
+
+# ==================== واجهات HTML ====================
+
+LOGIN_HTML = """
 <!DOCTYPE html>
-<html dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>محادثاتي</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دخول - نبراس</title>
     <style>
-        body { font-family: 'Segoe UI', Arial; padding: 20px; background: #f0f2f5; margin:0; }
-        .container { max-width: 800px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1 { color: #1a1a2e; }
-        .conv-list { margin-top: 20px; }
-        .conv-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; transition: 0.2s; border-radius: 8px; }
-        .conv-item:hover { background: #f8f9fa; transform: translateX(5px); }
-        .conv-title { font-weight: bold; font-size: 18px; color: #16213e; }
-        .conv-date { font-size: 13px; color: #6c757d; }
-        .new { display: flex; gap: 10px; margin-bottom: 25px; }
-        .new input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        .new button { padding: 10px 24px; background: #0d6efd; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; }
-        .new button:hover { background: #0b5ed7; }
-        .no-conv { color: #6c757d; text-align: center; padding: 30px; }
+        body{background:#f5f7fa;display:flex;justify-content:center;align-items:center;height:100vh;font-family:'Segoe UI',Arial,sans-serif;margin:0}
+        .box{background:white;padding:40px;border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,0.08);width:340px;text-align:center}
+        h2{color:#1a2b3c}
+        input{width:100%;padding:12px;border:1px solid #dce1e8;border-radius:10px;font-size:16px;margin:8px 0;text-align:center;box-sizing:border-box}
+        button{width:100%;padding:12px;background:#4a6a8a;color:white;border:none;border-radius:10px;font-size:18px;cursor:pointer}
+        button:hover{background:#3a5a7a}
+        .error{color:#c33;margin:8px 0}
+        a{color:#4a6a8a;text-decoration:none;display:block;margin-top:10px}
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📂 محادثاتي</h1>
-        <div class="new">
-            <form method="POST" action="/new" style="display: flex; width: 100%; gap: 10px;">
-                <input type="text" name="title" placeholder="عنوان المحادثة الجديدة" required>
-                <button type="submit">➕ جديد</button>
-            </form>
-        </div>
-        <div class="conv-list">
-            {% if conversations %}
-                {% for conv in conversations %}
-                <div class="conv-item" onclick="window.location='/chat/{{ conv.id }}'">
-                    <div class="conv-title">{{ conv.title }}</div>
-                    <div class="conv-date">{{ conv.updated_at[:16] }}</div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="no-conv">لا توجد محادثات سابقة، ابدأ محادثة جديدة!</div>
-            {% endif %}
-        </div>
-    </div>
+<div class="box">
+    <h2>🔐 دخول نبراس</h2>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="POST">
+        <input type="email" name="email" placeholder="البريد الإلكتروني" required>
+        <input type="password" name="password" placeholder="كلمة المرور" required>
+        <button type="submit">دخول</button>
+    </form>
+    <a href="{{ url_for('register') }}">ليس لديك حساب؟ سجل الآن</a>
+</div>
 </body>
 </html>
 """
 
-CHAT_HTML = """
+REGISTER_HTML = """
 <!DOCTYPE html>
-<html dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <title>المحادثة</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل - نبراس</title>
     <style>
-        body { font-family: 'Segoe UI', Arial; padding: 20px; background: #f0f2f5; margin:0; }
-        .container { max-width: 1100px; margin: auto; display: flex; gap: 25px; align-items: flex-start; }
-        .sidebar { width: 280px; background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .sidebar h3 { margin-top: 0; color: #1a1a2e; }
-        .sidebar a { display: block; padding: 12px; margin: 6px 0; background: #f8f9fa; border-radius: 8px; text-decoration: none; color: #16213e; transition: 0.2s; }
-        .sidebar a:hover { background: #e9ecef; }
-        .sidebar .active { background: #d4edda; font-weight: bold; }
-        .sidebar .new-form { display: flex; flex-direction: column; gap: 8px; margin: 15px 0; }
-        .sidebar .new-form input { padding: 10px; border: 1px solid #ccc; border-radius: 8px; }
-        .sidebar .new-form button { padding: 10px; background: #0d6efd; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        .sidebar .new-form button:hover { background: #0b5ed7; }
-        .delete-btn { background: #dc3545; color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; width: 100%; margin-top: 10px; }
-        .delete-btn:hover { background: #c82333; }
-        .chat-area { flex: 1; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .messages { height: 450px; overflow-y: auto; border: 1px solid #e9ecef; padding: 15px; border-radius: 12px; background: #fafafa; margin-bottom: 20px; }
-        .msg { margin: 10px 0; padding: 12px 18px; border-radius: 18px; max-width: 80%; word-wrap: break-word; }
-        .user { background: #0d6efd; color: white; align-self: flex-end; margin-right: auto; }
-        .assistant { background: #e9ecef; color: #212529; align-self: flex-start; }
-        .form { display: flex; gap: 12px; }
-        .form input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 30px; font-size: 16px; }
-        .form button { padding: 12px 28px; background: #28a745; color: white; border: none; border-radius: 30px; cursor: pointer; font-size: 16px; }
-        .form button:hover { background: #218838; }
-        h2 { color: #1a1a2e; margin-top: 0; }
-        .back-link { display: inline-block; margin-bottom: 15px; color: #0d6efd; text-decoration: none; }
-        .back-link:hover { text-decoration: underline; }
+        body{background:#f5f7fa;display:flex;justify-content:center;align-items:center;height:100vh;font-family:'Segoe UI',Arial,sans-serif;margin:0}
+        .box{background:white;padding:40px;border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,0.08);width:340px;text-align:center}
+        h2{color:#1a2b3c}
+        input{width:100%;padding:12px;border:1px solid #dce1e8;border-radius:10px;font-size:16px;margin:8px 0;text-align:center;box-sizing:border-box}
+        button{width:100%;padding:12px;background:#4a6a8a;color:white;border:none;border-radius:10px;font-size:18px;cursor:pointer}
+        button:hover{background:#3a5a7a}
+        .error{color:#c33;margin:8px 0}
+        a{color:#4a6a8a;text-decoration:none;display:block;margin-top:10px}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <h3>📂 المحادثات</h3>
-            <a href="/">🏠 الرئيسية</a>
-            <form method="POST" action="/new" class="new-form">
-                <input type="text" name="title" placeholder="عنوان جديد" required>
-                <button type="submit">➕ إضافة</button>
-            </form>
-            {% for conv in conversations %}
-                <a href="/chat/{{ conv.id }}" class="{% if conv.id == current_conv %}active{% endif %}">
-                    {{ conv.title }}
-                </a>
-            {% endfor %}
-            <form method="POST" action="/delete/{{ current_conv }}" onsubmit="return confirm('حذف المحادثة؟')">
-                <button type="submit" class="delete-btn">🗑️ حذف هذه المحادثة</button>
-            </form>
-        </div>
-        <div class="chat-area">
-            <h2>💬 المحادثة</h2>
-            <div class="messages">
-                {% for msg in messages %}
-                    <div class="msg {{ msg.role }}">{{ msg.content }}</div>
-                {% endfor %}
-            </div>
-            <form method="POST" action="/send" class="form">
-                <input type="hidden" name="conv_id" value="{{ current_conv }}">
-                <input type="text" name="message" placeholder="اكتب رسالتك..." required autofocus>
-                <button type="submit">إرسال</button>
-            </form>
-        </div>
-    </div>
+<div class="box">
+    <h2>📝 حساب جديد</h2>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="POST">
+        <input type="text" name="name" placeholder="الاسم الكامل" required>
+        <input type="email" name="email" placeholder="البريد الإلكتروني" required>
+        <input type="password" name="password" placeholder="كلمة المرور" required>
+        <button type="submit">تسجيل</button>
+    </form>
+    <a href="{{ url_for('login') }}">لديك حساب؟ سجل دخول</a>
+</div>
 </body>
 </html>
 """
 
-# ========== 6. مسارات Flask ==========
-@app.route("/")
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>نبراس</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',Arial,sans-serif}
+        body{background:#fff;height:100dvh;display:flex;justify-content:center;align-items:center}
+        .app{width:100%;max-width:450px;height:100dvh;display:flex;flex-direction:column;background:#fff}
+        .header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #eaeef2}
+        .header .menu-btn{background:none;border:none;font-size:22px;color:#5a6b7c;cursor:pointer;padding:4px}
+        .header .logout-btn{background:#e74c3c;color:#fff;border:none;padding:6px 14px;border-radius:30px;cursor:pointer;font-size:14px;text-decoration:none}
+        .header .logout-btn:hover{background:#c0392b}
+        .dropdown{display:none;position:absolute;top:64px;left:14px;right:14px;background:#fff;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,0.08);z-index:100;border:1px solid #eaedf2}
+        .dropdown.show{display:flex;flex-direction:column}
+        .dropdown .item{padding:14px 18px;font-size:15px;background:none;border:none;width:100%;text-align:right;cursor:pointer;border-bottom:1px solid #f0f2f5}
+        .dropdown .item:hover{background:#f5f7fa}
+        #chat{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+        .msg{max-width:80%;padding:10px 16px;border-radius:20px;font-size:18px;line-height:1.6;word-wrap:break-word;white-space:pre-wrap}
+        .msg.user{align-self:flex-end;background:#eef2f7;border-bottom-left-radius:6px}
+        .msg.bot{align-self:flex-start;background:#fff;border-bottom-right-radius:6px}
+        .msg .time{font-size:9px;opacity:0.35;display:block;margin-top:4px}
+        .msg.error{background:#fde8e8;color:#a33;align-self:center;max-width:90%}
+        .msg .image-upload{max-width:100%;max-height:200px;border-radius:12px;margin:4px 0;border:1px solid #ddd;display:block}
+        .input-area{display:flex;align-items:flex-end;gap:6px;padding:6px 12px;margin:8px 14px 16px;background:#f5f7fa;border-radius:40px;border:1px solid #dce1e8}
+        .input-area textarea{flex:1;border:none;background:transparent;padding:12px 4px;font-size:17px;outline:none;color:#1a2b3c;direction:rtl;resize:none;overflow:hidden;min-height:40px;max-height:120px;font-family:inherit}
+        .input-area .send{background:#4a6a8a;color:#fff;border:none;width:44px;height:44px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+        .input-area .btn-icon{background:none;border:none;color:#6a7b8c;font-size:20px;cursor:pointer;padding:4px;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+        .input-area .mic-btn.listening{color:#c33;background:#fde8e8}
+        .plus-btn{background:none;border:none;color:#4a6a8a;font-size:24px;cursor:pointer;padding:4px;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+        .plus-options{display:none;position:absolute;bottom:70px;right:0;background:#fff;border-radius:20px;box-shadow:0 8px 30px rgba(0,0,0,0.12);padding:12px;gap:8px;flex-direction:row;border:1px solid #eaeef2;z-index:50}
+        .plus-options.show{display:flex}
+        .plus-options .option-btn{background:#f5f7fa;border:none;border-radius:50%;width:52px;height:52px;font-size:22px;color:#1a2b3c;cursor:pointer}
+        .plus-options .option-btn:hover{background:#e8ecf0}
+    </style>
+</head>
+<body>
+<div class="app">
+    <div class="header">
+        <button class="menu-btn" id="menuToggle"><i class="fas fa-ellipsis-v"></i></button>
+        <span style="font-size:16px;color:#1a2b3c;font-weight:bold">نبراس</span>
+        <a href="/logout" class="logout-btn"><i class="fas fa-sign-out-alt"></i> خروج</a>
+    </div>
+    <div class="dropdown" id="dropdown">
+        <button class="item" data-action="new"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
+        <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
+        <button class="item" data-action="history"><i class="fas fa-history"></i> محادثاتي</button>
+    </div>
+    <div id="chat"></div>
+    <div class="input-area">
+        <button class="btn-icon mic-btn" id="micBtn"><i class="fas fa-microphone"></i></button>
+        <button class="plus-btn" id="plusBtn"><i class="fas fa-plus"></i></button>
+        <div class="plus-options" id="plusOptions">
+            <button class="option-btn camera" id="cameraBtn"><i class="fas fa-camera"></i></button>
+            <button class="option-btn gallery" id="galleryBtn"><i class="fas fa-images"></i></button>
+            <button class="option-btn files" id="filesBtn"><i class="fas fa-folder"></i></button>
+        </div>
+        <textarea id="userInput" placeholder="اكتب رسالة..." rows="1"></textarea>
+        <button class="send" id="sendBtn"><i class="fas fa-arrow-left"></i></button>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="fileInputGeneric" style="display:none">
+</div>
+<script>
+(function(){
+let h=[]; let pendingImage=null;
+const chat=document.getElementById('chat'), input=document.getElementById('userInput'), send=document.getElementById('sendBtn');
+const menu=document.getElementById('menuToggle'), dropdown=document.getElementById('dropdown');
+const plus=document.getElementById('plusBtn'), options=document.getElementById('plusOptions');
+const mic=document.getElementById('micBtn'), file=document.getElementById('fileInput'), cam=document.getElementById('cameraInput'), gen=document.getElementById('fileInputGeneric');
+
+const addMsg=(text,sender='bot',sys=false,img=null)=>{
+    const el=document.createElement('div'); el.className='msg '+sender;
+    if(sender==='error')el.classList.add('error');
+    const tm=new Date().toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});
+    if(img){
+        el.innerHTML=`<img src="${img}" class="image-upload"/><span class="file-label">${text||'صورة'}</span><span class="time"> ${tm}</span>`;
+        chat.appendChild(el); chat.scrollTop=chat.scrollHeight; return;
+    }
+    if(sender==='bot'&&!sys){
+        el.innerHTML=`<span class="typing-text"></span><span class="time"> ${tm}</span>`;
+        chat.appendChild(el); chat.scrollTop=chat.scrollHeight;
+        let i=0; const sp=el.querySelector('.typing-text');
+        const iv=setInterval(()=>{if(i<text.length){sp.textContent+=text.charAt(i);i++;chat.scrollTop=chat.scrollHeight}else clearInterval(iv)},20);
+        return;
+    }
+    el.innerHTML=text+` <span class="time">${tm}</span>`;
+    chat.appendChild(el); chat.scrollTop=chat.scrollHeight;
+};
+
+const sendMsg=async()=>{
+    const txt=input.value.trim(); if(!txt)return;
+    addMsg(txt,'user'); input.value=''; input.style.height='40px';
+    try{
+        const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:txt,image:null,history:h})});
+        const d=await res.json();
+        res.ok?addMsg(d.reply,'bot'):addMsg('خطأ: '+d.error,'error');
+    }catch(e){addMsg('تعذر الاتصال.','error')}
+};
+
+input.addEventListener('keypress',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault(); sendMsg()}});
+send.addEventListener('click',sendMsg);
+menu.addEventListener('click',e=>{e.stopPropagation(); dropdown.classList.toggle('show')});
+document.addEventListener('click',()=>{dropdown.classList.remove('show')});
+document.querySelectorAll('.dropdown .item').forEach(b=>{
+    b.addEventListener('click',()=>{
+        dropdown.classList.remove('show');
+        if(b.dataset.action==='new'){chat.innerHTML=''; h=[]; addMsg('بدأت محادثة جديدة.','bot',true)}
+        else if(b.dataset.action==='history'){window.location.href='/conversations'}
+    })
+});
+plus.addEventListener('click',()=>{plus.classList.toggle('rotate'); options.classList.toggle('show')});
+document.addEventListener('click',e=>{if(!plus.contains(e.target)&&!options.contains(e.target)){options.classList.remove('show');plus.classList.remove('rotate')}});
+
+const handleFile=(file)=>{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+        const data=ev.target.result;
+        pendingImage=data;
+        addMsg(file.name,'user',false,data);
+        let imgs=JSON.parse(localStorage.getItem('imgs')||'[]'); imgs.push(data); localStorage.setItem('imgs',JSON.stringify(imgs));
+        sendAfterMedia(data);
+    };
+    reader.readAsDataURL(file);
+};
+
+cam.addEventListener('change',function(){if(this.files[0])handleFile(this.files[0])});
+file.addEventListener('change',function(){if(this.files[0])handleFile(this.files[0])});
+gen.addEventListener('change',function(){if(this.files[0]){addMsg('📎 تم رفع: '+this.files[0].name,'user'); this.value=''}});
+document.getElementById('cameraBtn').addEventListener('click',()=>{cam.click(); options.classList.remove('show');plus.classList.remove('rotate')});
+document.getElementById('galleryBtn').addEventListener('click',()=>{file.click(); options.classList.remove('show');plus.classList.remove('rotate')});
+document.getElementById('filesBtn').addEventListener('click',()=>{gen.click(); options.classList.remove('show');plus.classList.remove('rotate')});
+
+const sendAfterMedia=(data)=>{
+    const txt=input.value.trim(); input.value=''; input.style.height='40px';
+    sendInternal(txt||"📎 ملف مرفق",data);
+};
+const sendInternal=async(txt,image)=>{
+    try{
+        const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:txt,image:image,history:h})});
+        const d=await res.json();
+        res.ok?addMsg(d.reply,'bot'):addMsg('خطأ: '+d.error,'error');
+    }catch(e){addMsg('تعذر الاتصال.','error')}
+};
+
+if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
+    let rec=null;
+    mic.addEventListener('click',function(){
+        if(this.classList.contains('listening')){this.classList.remove('listening'); if(rec)rec.stop(); return}
+        const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+        rec=new SR(); rec.lang='ar-SA'; rec.continuous=false; rec.interimResults=false;
+        this.classList.add('listening'); addMsg('جاري الاستماع...','bot',true);
+        rec.onresult=e=>{input.value=e.results[0][0].transcript; this.classList.remove('listening'); setTimeout(sendMsg,300)};
+        rec.onerror=()=>{this.classList.remove('listening')};
+        rec.start();
+    });
+}
+})();
+</script>
+</body>
+</html>
+"""
+
+# ==================== المسارات ====================
+
+@app.route('/')
+@login_required
 def index():
-    return render_template_string(INDEX_HTML, conversations=get_all_conversations())
+    return render_template_string(HTML_TEMPLATE)
 
-@app.route("/chat/<int:conv_id>")
-def chat(conv_id):
-    return render_template_string(CHAT_HTML,
-        conversations=get_all_conversations(),
-        current_conv=conv_id,
-        messages=get_messages(conv_id)
-    )
+@app.route('/chat')
+@login_required
+def chat_page():
+    return render_template_string(HTML_TEMPLATE)
 
-@app.route("/new", methods=["POST"])
-def new_conversation():
-    title = request.form.get("title", "محادثة جديدة")
-    conv_id = create_conversation(title)
-    return redirect(url_for("chat", conv_id=conv_id))
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        if check_password(email, password):
+            user = get_user_by_email(email)
+            login_user(user)
+            return redirect(url_for('index'))
+        return render_template_string(LOGIN_HTML, error="❌ بريد أو كلمة مرور خاطئة")
+    return render_template_string(LOGIN_HTML, error="")
 
-@app.route("/send", methods=["POST"])
-def send():
-    conv_id = int(request.form["conv_id"])
-    user_msg = request.form["message"].strip()
-    if not user_msg:
-        return redirect(url_for("chat", conv_id=conv_id))
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+        name = request.form.get('name')
+        if get_user_by_email(email):
+            return render_template_string(REGISTER_HTML, error="❌ البريد موجود مسبقاً")
+        create_user(email, password, name)
+        return redirect(url_for('login'))
+    return render_template_string(REGISTER_HTML, error="")
 
-    # حفظ رسالة المستخدم
-    save_message(conv_id, "user", user_msg)
-    memory = get_memory(conv_id)
-    memory.add("user", user_msg)
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
 
-    # تجهيز السياق للنموذج
-    system = {"role": "system", "content": "أنت مساعد ذكي ومفيد. أجب بالعربية."}
-    messages = [system] + memory.get()
-
+@app.route('/chat', methods=['POST'])
+@login_required
+def chat():
     try:
+        data = request.get_json()
+        user_message = data.get("message", "").strip()
+        image_data = data.get("image", None)
+
+        if not user_message and not image_data:
+            return jsonify({"reply": "اكتب شيء أساعدك فيه"})
+
+        # إضافة رسالة المستخدم إلى الذاكرة
+        add_message(current_user.id, "user", user_message)
+
+        # استرجاع آخر 10 رسائل من الذاكرة
+        chat_history = get_history(current_user.id, limit=10)
+
+        # بناء الرسائل لـ ChatGPT
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        for entry in chat_history:
+            messages.append({"role": entry["role"], "content": entry["content"]})
+
+        if image_data:
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": user_message or "حلل هذه الصورة باللهجة العامية"},
+                    {"type": "image_url", "image_url": {"url": image_data}}
+                ]
+            })
+
+        # البحث بالويب (اختياري للأسئلة الحديثة)
+        if any(word in user_message for word in ["أخبار", "اليوم", "الآن", "جديد", "تحديث", "آخر", "حدث", "وقت", "الساعة"]):
+            try:
+                print(f"🔍 محاولة البحث بالويب عن: {user_message}")
+                search_response = client.responses.create(
+                    model="gpt-4o-mini",
+                    instructions=f"{SYSTEM_PROMPT}\n\nسياق المحادثة السابقة: {chat_history}",
+                    input=f"ابحث في الويب عن أحدث المعلومات حول: {user_message}، وقدم لي ملخصاً مفيداً.",
+                    tools=[{"type": "web_search"}],
+                    temperature=0.7,
+                    max_output_tokens=800
+                )
+                search_result = search_response.output_text.strip()
+                if search_result:
+                    messages.append({
+                        "role": "user",
+                        "content": f"نتيجة البحث عن '{user_message}':\n{search_result}\n\nاستخدم هذه المعلومات في ردك."
+                    })
+                    print("✅ تم الحصول على نتائج البحث.")
+            except Exception as e:
+                print(f"⚠️ فشل البحث بالويب: {e}")
+
+        # الرد النهائي
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=messages,
-            temperature=0.7
+            max_tokens=1000,
+            temperature=0.8
         )
-        bot_reply = response.choices[0].message.content
+        reply = response.choices[0].message.content.strip()
+        if not reply:
+            reply = "ما قدرت أجيب لك رد، حاول مرة أخرى."
+
+        # حفظ رد المساعد في الذاكرة
+        add_message(current_user.id, "assistant", reply)
+
+        return jsonify({"reply": reply})
+
     except Exception as e:
-        bot_reply = f"⚠️ حدث خطأ: {e}"
+        print(f"❌ خطأ في /chat: {e}")
+        return jsonify({"error": str(e)}), 500
 
-    # حفظ رد البوت
-    save_message(conv_id, "assistant", bot_reply)
-    memory.add("assistant", bot_reply)
+@app.route('/conversations')
+@login_required
+def view_conversations():
+    try:
+        # تحويل user_id إلى نص لتجنب مشاكل نوع البيانات
+        user_id = str(current_user.id)
+        rows = fetch_all(
+            "SELECT id, role, content, created_at FROM conversations WHERE user_id = %s ORDER BY created_at ASC",
+            (user_id,)
+        )
 
-    return redirect(url_for("chat", conv_id=conv_id))
+        if not rows:
+            return "<h2 style='text-align:center;margin-top:50px;'>📭 لا توجد محادثات حتى الآن.</h2>"
 
-@app.route("/delete/<int:conv_id>", methods=["POST"])
-def delete(conv_id):
-    delete_conversation(conv_id)
-    if conv_id in active_memory:
-        del active_memory[conv_id]
-    return redirect(url_for("index"))
+        # تقسيم المحادثات إلى فصول (كل 10 رسائل فصل)
+        chapters = []
+        for i in range(0, len(rows), 10):
+            chapter = rows[i:i+10]
+            chapters.append(chapter)
 
-# ========== 7. تشغيل الخادم ==========
-if __name__ == "__main__":
-    app.run(debug=True)
+        html = """
+        <!DOCTYPE html>
+        <html dir="rtl" lang="ar">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>محادثاتي - نبراس</title>
+            <style>
+                body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
+                .back{display:inline-block;margin-bottom:20px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
+                .back:hover{background:#3a5a7a}
+                .chapter{background:white;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+                .chapter h2{color:#1a2b3c;border-bottom:2px solid #4a6a8a;padding-bottom:8px;margin-top:0}
+                .msg-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5}
+                .msg-item:last-child{border-bottom:none}
+                .msg-role{font-weight:bold;min-width:60px}
+                .msg-role.user{color:#2d7d46}
+                .msg-role.bot{color:#4a6a8a}
+                .msg-content{flex:1;word-break:break-word}
+                .msg-time{font-size:12px;color:#999;min-width:80px;text-align:left}
+                .actions{margin-top:10px;display:flex;gap:10px}
+                .actions a{background:#4a6a8a;color:white;padding:4px 12px;border-radius:20px;text-decoration:none;font-size:14px}
+                .actions a:hover{background:#3a5a7a}
+            </style>
+        </head>
+        <body>
+            <a href="/" class="back">⬅ العودة للرئيسية</a>
+            <h1>📋 محادثاتي</h1>
+        """
+
+        # عرض كل فصل
+        for idx, chapter in enumerate(chapters, 1):
+            html += f"""
+            <div class="chapter">
+                <h2>📖 المبحث {idx} - {len(chapter)} رسائل</h2>
+            """
+            for row in chapter:
+                role_display = '👤 مستخدم' if row[1] == 'user' else '🤖 نبراس'
+                role_class = 'user' if row[1] == 'user' else 'bot'
+                html += f"""
+                <div class="msg-item">
+                    <span class="msg-role {role_class}">{role_display}</span>
+                    <span class="msg-content">{row[2][:300]}</span>
+                    <span class="msg-time">{row[3]}</span>
+                </div>
+                """
+            html += f"""
+                <div class="actions">
+                    <a href="/">▶️ مواصلة المحادثة</a>
+                </div>
+            </div>
+            """
+
+        html += """
+        </body>
+        </html>
+        """
+        return html
+
+    except Exception as e:
+        print(f"❌ خطأ في /conversations: {e}")
+        return f"<h2 style='text-align:center;margin-top:50px;color:#c33;'>⚠️ حدث خطأ: {str(e)}</h2>", 500
+
+# ==================== تشغيل التطبيق ====================
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
