@@ -311,6 +311,11 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
 def index():
     return render_template_string(HTML_TEMPLATE)
 
+@app.route('/chat')
+@login_required
+def chat_page():
+    return render_template_string(HTML_TEMPLATE)
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -421,12 +426,18 @@ def view_conversations():
         # تحويل user_id إلى نص لتجنب مشاكل نوع البيانات
         user_id = str(current_user.id)
         rows = fetch_all(
-            "SELECT id, role, content, created_at FROM conversations WHERE user_id = %s ORDER BY created_at DESC",
+            "SELECT id, role, content, created_at FROM conversations WHERE user_id = %s ORDER BY created_at ASC",
             (user_id,)
         )
 
         if not rows:
             return "<h2 style='text-align:center;margin-top:50px;'>📭 لا توجد محادثات حتى الآن.</h2>"
+
+        # تقسيم المحادثات إلى فصول (كل 10 رسائل فصل)
+        chapters = []
+        for i in range(0, len(rows), 10):
+            chapter = rows[i:i+10]
+            chapters.append(chapter)
 
         html = """
         <!DOCTYPE html>
@@ -437,30 +448,51 @@ def view_conversations():
             <title>محادثاتي - نبراس</title>
             <style>
                 body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
-                table{width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
-                th{background:#4a6a8a;color:white;padding:12px;text-align:right}
-                td{padding:10px 12px;border-bottom:1px solid #eaeef2}
-                tr:hover{background:#f8f9fa}
-                .role-user{color:#2d7d46;font-weight:bold}
-                .role-assistant{color:#4a6a8a;font-weight:bold}
-                .content{max-width:300px;white-space:pre-wrap;word-break:break-word}
-                .time{font-size:12px;color:#999}
-                .back{display:inline-block;margin-bottom:15px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
+                .back{display:inline-block;margin-bottom:20px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
                 .back:hover{background:#3a5a7a}
-                .empty{text-align:center;font-size:18px;color:#6a7b8c;padding:40px;}
+                .chapter{background:white;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
+                .chapter h2{color:#1a2b3c;border-bottom:2px solid #4a6a8a;padding-bottom:8px;margin-top:0}
+                .msg-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5}
+                .msg-item:last-child{border-bottom:none}
+                .msg-role{font-weight:bold;min-width:60px}
+                .msg-role.user{color:#2d7d46}
+                .msg-role.bot{color:#4a6a8a}
+                .msg-content{flex:1;word-break:break-word}
+                .msg-time{font-size:12px;color:#999;min-width:80px;text-align:left}
+                .actions{margin-top:10px;display:flex;gap:10px}
+                .actions a{background:#4a6a8a;color:white;padding:4px 12px;border-radius:20px;text-decoration:none;font-size:14px}
+                .actions a:hover{background:#3a5a7a}
             </style>
         </head>
         <body>
             <a href="/" class="back">⬅ العودة للرئيسية</a>
             <h1>📋 محادثاتي</h1>
-            <table>
-                <tr><th>#</th><th>الدور</th><th>المحتوى</th><th>التاريخ</th></tr>
         """
-        for row in rows:
-            role_display = '👤 مستخدم' if row[1] == 'user' else '🤖 نبراس'
-            html += f"<tr><td>{row[0]}</td><td class='role-{row[1]}'>{role_display}</td><td class='content'>{row[2][:200]}</td><td class='time'>{row[3]}</td></tr>"
+
+        # عرض كل فصل
+        for idx, chapter in enumerate(chapters, 1):
+            html += f"""
+            <div class="chapter">
+                <h2>📖 المبحث {idx} - {len(chapter)} رسائل</h2>
+            """
+            for row in chapter:
+                role_display = '👤 مستخدم' if row[1] == 'user' else '🤖 نبراس'
+                role_class = 'user' if row[1] == 'user' else 'bot'
+                html += f"""
+                <div class="msg-item">
+                    <span class="msg-role {role_class}">{role_display}</span>
+                    <span class="msg-content">{row[2][:300]}</span>
+                    <span class="msg-time">{row[3]}</span>
+                </div>
+                """
+            html += f"""
+                <div class="actions">
+                    <a href="/">▶️ مواصلة المحادثة</a>
+                </div>
+            </div>
+            """
+
         html += """
-            </table>
         </body>
         </html>
         """
@@ -468,7 +500,7 @@ def view_conversations():
 
     except Exception as e:
         print(f"❌ خطأ في /conversations: {e}")
-        return f"<h2 style='text-align:center;margin-top:50px;color:#c33;'>⚠️ حدث خطأ أثناء تحميل المحادثات: {str(e)}</h2>", 500
+        return f"<h2 style='text-align:center;margin-top:50px;color:#c33;'>⚠️ حدث خطأ: {str(e)}</h2>", 500
 
 # ==================== تشغيل التطبيق ====================
 if __name__ == '__main__':
