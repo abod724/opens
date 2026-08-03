@@ -30,7 +30,7 @@ def get_user_plan(user_id):
         return {
             'id': None,
             'name': 'free',
-            'daily_limit': 5,
+            'daily_limit': 9999,
             'features': {},
             'end_date': None
         }
