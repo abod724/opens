@@ -309,6 +309,10 @@ if('webkitSpeechRecognition' in window || 'SpeechRecognition' in window){
 @app.route('/')
 @login_required
 def index():
+    # استقبال طلب استئناف المحادثة
+    resume_id = request.args.get('resume')
+    if resume_id:
+        session['resume_id'] = resume_id
     return render_template_string(HTML_TEMPLATE)
 
 @app.route('/chat')
@@ -423,7 +427,6 @@ def chat():
 @login_required
 def view_conversations():
     try:
-        # تحويل user_id إلى نص لتجنب مشاكل نوع البيانات
         user_id = str(current_user.id)
         rows = fetch_all(
             "SELECT id, role, content, created_at FROM conversations WHERE user_id = %s ORDER BY created_at ASC",
@@ -433,12 +436,19 @@ def view_conversations():
         if not rows:
             return "<h2 style='text-align:center;margin-top:50px;'>📭 لا توجد محادثات حتى الآن.</h2>"
 
-        # تقسيم المحادثات إلى فصول (كل 10 رسائل فصل)
+        # تقسيم المحادثات إلى فصول (كل 8-12 رسالة، أو حسب الموضوع)
         chapters = []
-        for i in range(0, len(rows), 10):
-            chapter = rows[i:i+10]
-            chapters.append(chapter)
+        current_chapter = []
+        for row in rows:
+            if row[1] == 'user' and len(current_chapter) >= 8:
+                chapters.append(current_chapter)
+                current_chapter = [row]
+            else:
+                current_chapter.append(row)
+        if current_chapter:
+            chapters.append(current_chapter)
 
+        # بناء HTML
         html = """
         <!DOCTYPE html>
         <html dir="rtl" lang="ar">
@@ -450,9 +460,43 @@ def view_conversations():
                 body{background:#f5f7fa;padding:20px;font-family:'Segoe UI',Arial,sans-serif}
                 .back{display:inline-block;margin-bottom:20px;padding:8px 16px;background:#4a6a8a;color:white;text-decoration:none;border-radius:8px}
                 .back:hover{background:#3a5a7a}
-                .chapter{background:white;border-radius:12px;padding:20px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.05)}
-                .chapter h2{color:#1a2b3c;border-bottom:2px solid #4a6a8a;padding-bottom:8px;margin-top:0}
-                .msg-item{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f5}
+                .chapter{background:white;border-radius:12px;margin-bottom:12px;box-shadow:0 2px 10px rgba(0,0,0,0.05);overflow:hidden}
+                .chapter-header{
+                    padding:14px 20px;
+                    background:#f8f9fa;
+                    cursor:pointer;
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
+                    border-bottom:1px solid #eaeef2;
+                    transition:background 0.2s;
+                }
+                .chapter-header:hover{background:#eef2f7}
+                .chapter-header h3{
+                    margin:0;
+                    font-size:18px;
+                    color:#1a2b3c;
+                }
+                .chapter-header .arrow{
+                    transition:transform 0.3s;
+                    font-size:20px;
+                }
+                .chapter-body{
+                    padding:0 20px;
+                    max-height:0;
+                    overflow:hidden;
+                    transition:max-height 0.4s ease, padding 0.3s ease;
+                }
+                .chapter-body.open{
+                    max-height:2000px;
+                    padding:15px 20px;
+                }
+                .msg-item{
+                    display:flex;
+                    gap:10px;
+                    padding:6px 0;
+                    border-bottom:1px solid #f0f2f5;
+                }
                 .msg-item:last-child{border-bottom:none}
                 .msg-role{font-weight:bold;min-width:60px}
                 .msg-role.user{color:#2d7d46}
@@ -460,39 +504,80 @@ def view_conversations():
                 .msg-content{flex:1;word-break:break-word}
                 .msg-time{font-size:12px;color:#999;min-width:80px;text-align:left}
                 .actions{margin-top:10px;display:flex;gap:10px}
-                .actions a{background:#4a6a8a;color:white;padding:4px 12px;border-radius:20px;text-decoration:none;font-size:14px}
+                .actions a{
+                    background:#4a6a8a;color:white;padding:5px 14px;
+                    border-radius:20px;text-decoration:none;font-size:14px;
+                }
                 .actions a:hover{background:#3a5a7a}
             </style>
         </head>
         <body>
             <a href="/" class="back">⬅ العودة للرئيسية</a>
             <h1>📋 محادثاتي</h1>
+            <div id="chapters-container">
         """
 
-        # عرض كل فصل
         for idx, chapter in enumerate(chapters, 1):
-            html += f"""
-            <div class="chapter">
-                <h2>📖 المبحث {idx} - {len(chapter)} رسائل</h2>
-            """
+            # استخراج عنوان من أول رسالة للمستخدم في هذا الفصل
+            title = f"المبحث {idx}"
+            for row in chapter:
+                if row[1] == 'user':
+                    first_msg = row[2][:40]
+                    title = f"المبحث {idx}: {first_msg}"
+                    break
+
+            # تجهيز رسائل الفصل
+            msgs_html = ""
             for row in chapter:
                 role_display = '👤 مستخدم' if row[1] == 'user' else '🤖 نبراس'
                 role_class = 'user' if row[1] == 'user' else 'bot'
-                html += f"""
+                msgs_html += f"""
                 <div class="msg-item">
                     <span class="msg-role {role_class}">{role_display}</span>
                     <span class="msg-content">{row[2][:300]}</span>
                     <span class="msg-time">{row[3]}</span>
                 </div>
                 """
+
+            # زر مواصلة (يرسل إلى صفحة الدردشة)
+            first_id = chapter[0][0]
             html += f"""
-                <div class="actions">
-                    <a href="/">▶️ مواصلة المحادثة</a>
+            <div class="chapter">
+                <div class="chapter-header" onclick="toggleChapter(this)">
+                    <h3>{title}</h3>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="chapter-body">
+                    {msgs_html}
+                    <div class="actions">
+                        <a href="/?resume={first_id}">▶️ مواصلة المحادثة</a>
+                    </div>
                 </div>
             </div>
             """
 
         html += """
+            </div>
+            <script>
+                function toggleChapter(header) {
+                    var body = header.nextElementSibling;
+                    var arrow = header.querySelector('.arrow');
+                    if (body.classList.contains('open')) {
+                        body.classList.remove('open');
+                        arrow.textContent = '▼';
+                    } else {
+                        body.classList.add('open');
+                        arrow.textContent = '▲';
+                    }
+                }
+                // فتح أول فصل بشكل افتراضي
+                document.addEventListener('DOMContentLoaded', function() {
+                    var firstChapter = document.querySelector('.chapter-header');
+                    if (firstChapter) {
+                        toggleChapter(firstChapter);
+                    }
+                });
+            </script>
         </body>
         </html>
         """
