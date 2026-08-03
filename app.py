@@ -189,7 +189,6 @@ HTML_TEMPLATE = """
         <button class="item" data-action="new"><i class="fas fa-plus-circle"></i> محادثة جديدة</button>
         <button class="item" data-action="library"><i class="fas fa-layer-group"></i> المكتبة</button>
         <button class="item" data-action="history"><i class="fas fa-history"></i> محادثاتي</button>
-        <!-- زر لوحة المسؤول (يظهر فقط للمسؤول) -->
         {% if current_user.email == 'abdullaha0569361@gmail.com' %}
         <button class="item" onclick="window.location.href='/admin/conversations'">
             <i class="fas fa-user-shield"></i> لوحة المسؤول
@@ -368,16 +367,11 @@ def chat():
         if not user_message and not image_data:
             return jsonify({"reply": "اكتب شيء أساعدك فيه"})
 
-        # ===== استرجاع السياق القديم تلقائياً (حتى بعد فترة انقطاع) =====
-        # استرجع آخر 10 رسائل من قاعدة البيانات للمستخدم
-        chat_history = get_history(current_user.id, limit=10)
-
-        # إذا لم توجد رسائل سابقة، استخدم السياق الحالي (إذا كان موجوداً)
-        if not chat_history:
-            chat_history = []
-
-        # ===== إضافة رسالة المستخدم إلى الذاكرة =====
+        # ===== إضافة رسالة المستخدم إلى الذاكرة أولاً =====
         add_message(current_user.id, "user", user_message)
+
+        # ===== استرجاع السياق بعد إضافة الرسالة الجديدة =====
+        chat_history = get_history(current_user.id, limit=10)
 
         # ===== بناء الرسائل لـ ChatGPT =====
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
