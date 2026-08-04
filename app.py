@@ -795,7 +795,7 @@ def admin_settings():
     free_plan = fetch_one("SELECT daily_limit FROM plans WHERE name = 'free'")
     premium_plan = fetch_one("SELECT daily_limit FROM plans WHERE name = 'premium'")
     
-    free_limit = free_plan[0] if free_plan else 9999
+    free_limit = free_plan[0] if free_plan else 5
     premium_limit = premium_plan[0] if premium_plan else 9999
     
     total_users = fetch_one("SELECT COUNT(*) FROM users")[0]
